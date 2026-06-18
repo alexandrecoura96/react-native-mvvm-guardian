@@ -9,17 +9,24 @@ Every recipe here answers the one question this skill exists to protect — *doe
 the new capability on the right side of a boundary?* — by reusing the foundations rather
 than inventing new layers:
 
-- the triad in code ([`triad-example.md`](triad-example.md) §0–§9),
-- the neutral data hook (`use<Thing>Data`, triad §5),
-- the error taxonomy (`AppError`, triad §1),
-- typed route params validated by a parser (triad §14),
-- the `AuthBridge` `api ⇄ auth` inversion ([`worked-examples.md`](worked-examples.md) §8d),
-- the navigation facade + coordinator ([`worked-examples.md`](worked-examples.md) §8a/§8c).
+- the triad in code ([`triad-example.md`](triad-example.md) [sections 0–9](triad-example.md#0-quickstart--the-smallest-faithful-slice-rung-1-40-lines)),
+- the neutral data hook (`use<Thing>Data`, triad [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it)),
+- the error taxonomy (`AppError`, triad [section 1](triad-example.md#1-model--what-the-data-is--domain-rules)),
+- typed route params validated by a parser (triad [section 14](triad-advanced.md#14-typed-route-params--validated-at-the-boundary-the-vm-never-imports-the-router)),
+- the `AuthBridge` `api ⇄ auth` inversion ([`worked-examples.md`](worked-examples.md) [section 8d](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)),
+- the navigation facade + coordinator ([`worked-examples.md`](worked-examples.md) [section 8a](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)/[section 8c](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)).
 
 **Read those first.** The libraries named below (Sentry, Apollo, NetInfo, …) are *instances*,
 exactly like every entry in [`stack-choices.md`](stack-choices.md) — picked to make the code
 concrete, never recommended or required. Where a library's own API churns across majors, the
 recipe says so; the **boundary**, not the lib, is the durable part.
+
+> **About the imports.** As everywhere in this skill, these snippets are illustrative.
+> App-internal imports — `transformProduct`, `toAppError`, `AppError`, `parseRouteId`,
+> `ProductsData` — are the assumed helpers from
+> [`triad-example.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here); the chat-feature names (`Message`, `transformMessage`,
+> `fetchMessages`) and storage stand-ins (`storage`/`kvStore`) are feature-local examples you
+> implement the same way. Third-party imports are real packages.
 
 ---
 
@@ -29,7 +36,7 @@ recipe says so; the **boundary**, not the lib, is the durable part.
 View renders and forwards events — it never reports. A thin `services/` reporter behind a
 neutral `Reporter` contract is the **only** place the SDK is named, and **PII never reaches a
 log line**. This is the same `reporter` the error boundary already calls
-([`triad-example.md`](triad-example.md) §16) — completed here.
+([`triad-advanced.md`](triad-advanced.md) [section 16](triad-advanced.md#16-error-boundary--render-time-crashes-contained-at-the-navigator-level)) — completed here.
 
 ```ts
 // shared/services/reporter.ts — the ONLY module that names the telemetry SDK
@@ -50,7 +57,7 @@ export const reporter: Reporter = {
   report: (error, context) => Sentry.captureException(error, { extra: scrubPII(context) }),
 };
 
-// the alias the render-time error boundary (triad §16) calls:
+// the alias the render-time error boundary (triad section 16) calls:
 export const reportError = (e: Error) => reporter.report(e);
 ```
 
@@ -68,7 +75,7 @@ export function useCheckoutViewModel(): CheckoutVM {
 
 The View imports no reporter; it has no idea telemetry exists. Swapping Sentry → PostHog →
 a custom service rewrites **only** `reporter.ts`. For test-time substitution, inject a fake
-`Reporter` the same way the VM injects any collaborator (`mvvm-and-scaling.md` §1 DI seam), or
+`Reporter` the same way the VM injects any collaborator (`mvvm-and-scaling.md` [section 1](mvvm-and-scaling.md#1-layer-responsibilities-the-contract) dependency-injection (DI) seam), or
 `jest.mock('@/shared/services/reporter')`.
 
 > **Why it protects the contract.** The View stays passive (no side effects), the VM owns the
@@ -88,7 +95,7 @@ it would for a fetched list, so it never learns the data is live.
 import { transformMessage, type MessageDTO } from '../transformers/transformMessage';
 import type { Message } from '../models/message';
 
-// returns an unsubscribe fn; wire→domain happens at the edge, exactly like a fetch service (triad §2)
+// returns an unsubscribe fn; wire→domain happens at the edge, exactly like a fetch service (triad section 2)
 export function openMessageStream(roomId: string, onMessage: (m: Message) => void): () => void {
   const ws = new WebSocket(`${process.env.EXPO_PUBLIC_WS_URL}/rooms/${roomId}`);
   ws.onmessage = (e) => onMessage(transformMessage(JSON.parse(e.data) as MessageDTO));
@@ -97,7 +104,7 @@ export function openMessageStream(roomId: string, onMessage: (m: Message) => voi
 ```
 
 ```ts
-// features/chat/queries/useMessagesData.ts — the stream feeds the cache; the VM sees the §5 neutral shape
+// features/chat/queries/useMessagesData.ts — the stream feeds the cache; the VM sees the section 5 neutral shape
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchMessages } from '../services/messageService';
@@ -120,8 +127,8 @@ export function useMessagesData(roomId: string): { items: Message[]; isLoading: 
 ```
 
 The VM consumes `useMessagesData(roomId)` like any list hook — it never imports `WebSocket`.
-**SSE**: swap `WebSocket` for `EventSource`. **GraphQL subscriptions**: the client's `subscribe`
-(see §4). **Connection scoped to a screen** instead of the cache? Lift the effect into a neutral
+**SSE** (Server-Sent Events): swap `WebSocket` for `EventSource`. **GraphQL subscriptions**: the client's `subscribe`
+(see [section 4](#4-graphql--the-client-is-the-server-state-boundary-the-vm-depends-on-a-neutral-hook)). **Connection scoped to a screen** instead of the cache? Lift the effect into a neutral
 `useMessageStream` hook the VM owns — still never the View. The boundary is identical.
 
 ---
@@ -174,35 +181,35 @@ VM still reads domain types.
 server-state boundary and a pure-GraphQL app has **no separate `services/` HTTP layer** — the
 client is it (the documented exception in [`stack-choices.md`](stack-choices.md)). The rule is
 otherwise unchanged: cage the client + the documents in `queries/`, and expose the **same neutral
-`ProductsData` shape** as triad §5, so the VM and View never learn it's GraphQL.
+`ProductsData` shape** as triad [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it), so the VM and View never learn it's GraphQL.
 
 ```ts
-// features/products/queries/useProductsData.ts (GraphQL) — Apollo caged here; VM sees the §5 neutral shape
+// features/products/queries/useProductsData.ts (GraphQL) — Apollo caged here; VM sees the section 5 neutral shape
 import { useCallback, useMemo } from 'react';
 import { gql, useQuery } from '@apollo/client'; // the ONLY place Apollo is named
 import { transformProduct, type ProductDTO } from '../transformers/transformProduct';
 import { toAppError } from '@/shared/api/toAppError';
-import type { ProductsData } from './types'; // the SAME neutral shape as triad §5
+import type { ProductsData } from './types'; // the SAME neutral shape as triad section 5
 
 const PRODUCTS = gql`query Products { products { id title price rating } }`;
 
 export function useProductsData(): ProductsData {
   const { data, loading, error, refetch } = useQuery<{ products: ProductDTO[] }>(PRODUCTS);
-  const items = useMemo(() => (data?.products ?? []).map(transformProduct), [data]); // wire→domain at the edge, same as §3
-  const reload = useCallback(() => { void refetch(); }, [refetch]); // stable ref (the §5 rule) — an inline arrow would change identity each render
+  const items = useMemo(() => (data?.products ?? []).map(transformProduct), [data]); // wire→domain at the edge, same as section 3
+  const reload = useCallback(() => { void refetch(); }, [refetch]); // stable ref (the section 5 rule) — an inline arrow would change identity each render
   return {
     items,
     isLoading: loading,
     isRefreshing: false,
-    error: error ? toAppError(error) : null, // GraphQL/network error → the domain AppError union (§1)
+    error: error ? toAppError(error) : null, // GraphQL/network error → the domain AppError union (section 1)
     refetch: reload,
   };
 }
 ```
 
-`useProductsViewModel` (triad §6), the View (§7), and the Screen (§8) are **byte-for-byte
+`useProductsViewModel` (triad [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)), the View ([section 7](triad-example.md#7-view--passive-only-branches-on-status-formats-nothing)), and the Screen ([section 8](triad-example.md#8-screen--the-per-screen-composition-root)) are **byte-for-byte
 unchanged** — they consume `ProductsData`. Writes: wrap `useMutation(gql\`…\`)` in `mutations/`
-and return the neutral `ToggleFavorite` shape (triad §17). **urql / Relay**: same boundary, swap
+and return the neutral `ToggleFavorite` shape (triad [section 17](triad-advanced.md#17-mutations--the-write-path-behind-a-neutral-hook-invalidation--optimistic-update)). **urql / Relay**: same boundary, swap
 the import.
 
 > **Freshness.** Apollo Client's `gql` / `useQuery` / `useMutation` hooks are stable across its
@@ -214,7 +221,7 @@ the import.
 ## 5. Deep linking — the inbound URL is untrusted input, validated by a parser at the boundary
 
 **The rule.** A deep link is just an externally-supplied **route param** — i.e. untrusted input.
-It builds directly on typed route params ([`triad-example.md`](triad-example.md) §14): the
+It builds directly on typed route params ([`triad-advanced.md`](triad-advanced.md) [section 14](triad-advanced.md#14-typed-route-params--validated-at-the-boundary-the-vm-never-imports-the-router)): the
 URL→screen mapping lives in the **navigation layer**, and inbound params are **validated by a
 `parser` at the boundary** before any ViewModel trusts them. No new layer — the navigation facade
 + parser already own it.
@@ -224,20 +231,20 @@ URL→screen mapping lives in the **navigation layer**, and inbound params are *
 //   expo-router → the file tree IS the linking config (typed routes);
 //   React Navigation → a `linking` object passed to NavigationContainer.
 
-// features/products/navigation.ts — the SAME validated param hook as §14 (the parser is the guard)
+// features/products/navigation.ts — the SAME validated param hook as section 14 (the parser is the guard)
 import { useLocalSearchParams } from 'expo-router';      // RN Navigation: read route.params instead
 import { parseRouteId } from './parsers/parseRouteId';
 
 export function useProductRouteId(): number | null {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return parseRouteId(id); // a malformed deep link → null → the VM's `error` variant (§14), never a crash
+  return parseRouteId(id); // a malformed deep link → null → the VM's `error` variant (section 14), never a crash
 }
 ```
 
 The VM depends on the neutral `number | null` — a hostile or stale link can't smuggle bad data
 inward, because the parser narrows it at the edge. **Auth-gated links**: the decision to redirect
 to login is a **shell transition** owned by the navigation facade / a coordinator
-([`worked-examples.md`](worked-examples.md) §8b), not the target screen's View — the View still
+([`worked-examples.md`](worked-examples.md) [section 8b](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)), not the target screen's View — the View still
 only renders the branch the VM resolved.
 
 > **Why it protects the contract.** External input crosses exactly one boundary (navigation),
@@ -249,29 +256,29 @@ only renders the branch the VM resolved.
 ## 6. Security — token lifecycle, secret storage, PII (behind the auth service / `AuthBridge`)
 
 **The rule.** Security lives behind the **`AuthBridge` port** already worked in
-[`worked-examples.md`](worked-examples.md) §8d — that *is* the security boundary. The VM sees only
+[`worked-examples.md`](worked-examples.md) [section 8d](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios) — that *is* the security boundary. The VM sees only
 **domain state** (`isAuthenticated` via a selector, an `AppError` on failure), never a raw token
-or the secure-storage API. Completing the rules around §8d:
+or the secure-storage API. Completing the rules around section 8d:
 
 - **Token lifecycle.** Access token in the client store (or memory); **refresh token in a secure
-  keystore** (Keychain / Keystore), read async — which is exactly why §8d's `getRefreshToken`
+  keystore** (Keychain / Keystore), read async — which is exactly why section 8d's `getRefreshToken`
   returns a `Promise`. The response interceptor refreshes once on `401`, then calls
-  `onAuthFailure` → the **logout coordinator** ([`worked-examples.md`](worked-examples.md) §8c).
+  `onAuthFailure` → the **logout coordinator** ([`worked-examples.md`](worked-examples.md) [section 8c](worked-examples.md#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)).
 - **Single-flight refresh.** N concurrent `401`s must trigger **one** refresh, not N — queue the
   in-flight refresh inside the interceptor/bridge (the one place that owns transport), never in a
   VM. (A naive per-request refresh is the leak to catch in review.)
 - **Secrets never in the client store or plain async storage** — a secure keystore only. The
   client store holds the *access* token (short-lived); the refresh token and any secret stay in
   the keystore behind the persistence adapter.
-- **PII never logged.** The reporter (§1) scrubs before `report`; a `formatter` never builds a
+- **PII never logged.** The reporter ([section 1](#1-observability--analytics-logging-crash-reporting-fired-from-the-vm-never-the-view)) scrubs before `report`; a `formatter` never builds a
   log/analytics string out of PII. User-facing PII on screen is a ready value from the VM, like any
   other copy.
 - **Native security capabilities** (cert pinning, jailbreak/root detection, biometric gates) are
   **native modules → a `services/` device adapter** behind an abstraction, like any other native
-  API (triad §2 / `stack-choices.md`); the VM sees a typed result + a domain error, never the
+  API (triad [section 2](triad-example.md#2-service--the-only-layer-that-touches-io-classifies-errors) / `stack-choices.md`); the VM sees a typed result + a domain error, never the
   native module.
 
-No new code is needed beyond §8d + §8c + §1 — security is the **composition** of boundaries you
+No new code is needed beyond section 8d + section 8c + [section 1](#1-observability--analytics-logging-crash-reporting-fired-from-the-vm-never-the-view) — security is the **composition** of boundaries you
 already have, plus the single-flight-refresh discipline. If a token, a `SecureStore` call, or a
 refresh race ever appears in a ViewModel or a View, a boundary is leaking; the fix is to push it
 back behind the `AuthBridge` / the device adapter.

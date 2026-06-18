@@ -5,6 +5,15 @@ SOLID + best practices + conventions**, helps you **choose your stack** without
 breaking the architecture, and — when the app outgrows its shape — knows **how to
 scale it** up a deliberate ladder:
 
+> **New to the jargon?** **MVVM** = Model–View–ViewModel (the three-layer split this
+> plugin enforces). **SOLID** = five object-oriented design principles — Single
+> Responsibility, Open–Closed, Liskov Substitution, Interface Segregation, and
+> Dependency Inversion. You don't need to know them going in: every term is spelled
+> out and shown with examples in the references (the glossary in
+> [`conventions.md`](skills/rn-mvvm-guardian/references/conventions.md#glossary), and
+> SOLID worked principle-by-principle in
+> [`mvvm-and-scaling.md`](skills/rn-mvvm-guardian/references/mvvm-and-scaling.md#solid--the-five-principles-in-plain-terms-and-in-mvvm)).
+
 ```
 screen-based → feature-based → modular monolith → micro-frontend
 ```
@@ -31,7 +40,7 @@ choice stays reversible.
 
 > **New here?** Skim the [cheatsheet](skills/rn-mvvm-guardian/references/cheatsheet.md)
 > for a 60-second orientation, then copy the
-> [§0 quickstart](skills/rn-mvvm-guardian/references/triad-example.md) (~40 lines —
+> [section 0 quickstart](skills/rn-mvvm-guardian/references/triad-example.md#0-quickstart--the-smallest-faithful-slice-rung-1-40-lines) (~40 lines —
 > the smallest faithful triad) and add layers only when a distinct reason to change
 > appears. Everything else is reference you reach for on demand.
 
@@ -61,10 +70,16 @@ To try it before publishing, add a local path instead:
     the ladder, the gates, naming), each row pointing at the deep reference. Start here.
   - `mvvm-and-scaling.md` — the layer contract, conformance checklist, scaling
     ladder, migration playbooks, and governance.
-  - `triad-example.md` — the triad in code: a full Model→…→View→Screen slice, the
-    ViewModel contract as a discriminated union, controlled inputs, tests, and the
-    harder cases — typed route params, mutations (optimistic + rollback), an error
-    boundary, and the same triad on MobX / RTK Query / Redux.
+  - `triad-example.md` — the triad in code, **core slice** (sections 0–9): a full
+    Model→…→View→Screen slice, the ViewModel contract as a discriminated union,
+    controlled inputs, and tests.
+  - `triad-advanced.md` — the **harder cases** (sections 10–18): forms, Open/Closed via
+    a registry, the no-server-state path, the god-component refactor, typed route params,
+    mutations (optimistic + rollback), an error boundary, and the same triad on
+    MobX / RTK Query / Redux.
+  - `triad-crosscutting.md` — the **cross-cutting concerns** (sections 19–23): i18n,
+    accessibility, animations, Suspense, plus a referenced-helpers appendix listing every
+    assumed primitive (`formatPrice`, `Spinner`, `useLoginMutation`, …) with its signature.
   - `conventions.md` — glossary, naming rules, canonical folder trees, VM-state
     modeling, the adoption ladder, and what's out of scope (so far).
   - `stack-choices.md` — the library menu per concern, where each plugs into the
@@ -72,7 +87,7 @@ To try it before publishing, add a local path instead:
   - `worked-examples.md` — a concrete Expo + TanStack instantiation: conformance
     greps, the feature-boundary ESLint recipe, the `AuthBridge` inversion,
     server-/client-state specifics, and the worked screen→feature migration —
-    **plus §10, the same recipes re-derived on a contrasting stack** (bare RN +
+    **plus section 10, the same recipes re-derived on a contrasting stack** (bare RN +
     React Navigation + Redux Toolkit + fetch) so the patterns are shown changing
     *imports only*. Keep the pattern, swap the specifics for your libs.
   - `integration-recipes.md` — the previously-deferred concerns worked in code:
@@ -85,7 +100,7 @@ To try it before publishing, add a local path instead:
 The contract is distilled from production React Native MVVM practice — the
 Model/View/ViewModel triad adapted to React's unidirectional data flow, SOLID, and
 the feature-boundary discipline. It is **self-contained in this repo**: the cheatsheet
-(index) plus the six deep references above are the long-form source for the contracts, the boundary lint, the
+(index) plus the deep references above are the long-form source for the contracts, the boundary lint, the
 transformer/formatter/parser taxonomy, the triad in code, and the worked
 screen→feature migration.
 

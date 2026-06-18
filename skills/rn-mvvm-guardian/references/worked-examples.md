@@ -13,11 +13,19 @@ stack-neutral contract these examples instantiate. For the triad in code (the
 Model→…→View→Screen slice and the VM contract), see
 [`triad-example.md`](triad-example.md).
 
-> **Not on this stack? §10 re-derives every recipe on a contrasting one** (bare React
+> **Not on this stack? [section 10](#10-the-same-recipes-on-a-contrasting-stack-bare-rn--react-navigation--redux-toolkit--fetch) re-derives every recipe on a contrasting one** (bare React
 > Native + React Navigation + Redux Toolkit + `fetch`, no Expo, no server-state lib) —
 > so you can see the greps, the I/O service, the facade, and the coordinator change
 > *imports only*, never the boundaries. The triad itself is shown across MobX / RTK
-> Query / Redux in [`triad-example.md`](triad-example.md) §15.
+> Query / Redux in [`triad-advanced.md`](triad-advanced.md) [section 15](triad-advanced.md#15-the-same-triad-on-another-stack--a-mobx-class-vm-an-rtk-query-swap-and-a-redux-client-state-vm).
+
+> **About the imports in these snippets.** Third-party imports (`axios`, `zustand`,
+> `@tanstack/react-query`, `expo-router`, …) are real packages. App-internal imports
+> (`client`, `toAppError`, `transformProduct`, `Product`, `secureStore`, `navigationRef`,
+> `refreshSession`, the Redux `authSlice`/`store`, …) are the **same assumed helpers
+> catalogued in [`triad-example.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here)** or thin stand-ins you implement per your design — this is
+> illustrative TypeScript (adapt the imports to your libraries), not a runnable project.
+> What matters is the **boundary** each file sits behind, not the helper bodies.
 
 ---
 
@@ -86,21 +94,59 @@ Gate every change: `bunx tsc --noEmit` = 0 (or `npx`/`yarn`/`pnpm` on a non-bun 
     { group: ["**/services/**", "**/queries/**", "**/mutations/**", "**/stores/**", "**/coordinators/**", "**/navigation", "**/navigation/**"],
       message: "A View depends only on the VM contract — move data/navigation access to the ViewModel." },
   ] }] } },
+// ViewModels (use*ViewModel.ts) must stay UI-free: no react-native, no rendering, no
+// presentational components. (Pairs with the grep in section 1; the lint is what
+// survives turnover.) The VM imports `react` itself (useState/useMemo) — only
+// `react-native` and UI components are forbidden:
+{ files: ["src/**/use*ViewModel.ts"], rules: { "no-restricted-imports": ["error", {
+  paths: [{ name: "react-native",
+    message: "A ViewModel is UI-free — no react-native import. Move rendering to the View." }],
+  patterns: [
+    { group: ["@/features/*/*"],
+      message: "Import a feature only through its public API: '@/features/<name>'." },
+    { group: ["@/shared/components/**", "**/components/**"],
+      message: "A ViewModel must not import UI components — it exposes a contract the View renders." },
+  ] }] } },
+// Domain/Model layer (models/) must not import the infrastructure layers — the Model
+// depends on NOTHING (it's the innermost layer). This is the "domain ↛ infrastructure"
+// rule: a model file reaching for a service/query/store/the HTTP client has leaked I/O
+// into the domain. (RN has no "repositories"; the service layer is the analogue — and a
+// service importing a screen/View is the same inversion, caught by the *View.tsx block
+// above plus this one.)
+{ files: ["src/**/models/**/*.{ts,tsx}"], rules: { "no-restricted-imports": ["error", {
+  paths: [
+    { name: "axios", message: "The Model layer is pure domain — no HTTP client. I/O lives in services/." },
+    { name: "react-native", message: "The Model layer is framework-free — no react-native." },
+  ],
+  patterns: [
+    { group: ["**/services/**", "**/queries/**", "**/mutations/**", "**/stores/**", "**/navigation/**", "**/views/**", "**/screens/**"],
+      message: "The Model (domain) layer must not depend on infrastructure/UI — it is the innermost layer and depends on nothing." },
+  ] }] } },
 ```
 Because intra-feature imports are relative, the first rule only ever fires on an
 illegal cross-feature import.
 
+> **Why these rules earn their keep.** A grep catches a leak *if someone runs it*; an
+> ESLint rule fails the build the moment a ViewModel reaches for `react-native` or a
+> View imports `queries/`. **Expected violations are the point** — when the rule fires,
+> it has caught exactly the boundary erosion the contract exists to prevent, and the
+> fix is always to move the import to the layer that owns it (rendering → the View,
+> data/navigation → the ViewModel). The rules above need **no extra plugin**; for
+> path-based layering at scale (e.g. forbidding the model/domain layer from importing
+> `services/`), `eslint-plugin-boundaries` or `eslint-plugin-import`'s
+> `no-restricted-paths` express the same intent declaratively.
+
 ---
 
 ## 3. RN React-Query / Zustand specifics to verify
-- The query `select` is for **cheap view-shaping/derived selection only** (wire→domain runs in the service, §5 above) and must be stable: infinite-query `select` wrapped in `useCallback`; single-query `select: mapFn` a module-level function.
-- Gate id-based detail queries with `skipToken` (TanStack v5: `queryFn: id === null ? skipToken : () => fetchProduct(id)`) — the `parseRouteId` parser in [`triad-example.md`](triad-example.md) §14 already guarantees a positive integer or `null`, so the gate is just the null-check, and `skipToken` both disables the query and narrows `id` to `number` (no `as` cast); capability queries gated on their param the same way. (And map `isLoading` from `q.isLoading`, **not** `q.isPending`, on a gated query — a skipped query stays `isPending` forever; see [`triad-example.md`](triad-example.md) §5.)
+- The query `select` is for **cheap view-shaping/derived selection only** (wire→domain runs in the service, [section 5](#5-mapping-taxonomy-rn) above) and must be stable: infinite-query `select` wrapped in `useCallback`; single-query `select: mapFn` a module-level function.
+- Gate id-based detail queries with `skipToken` (TanStack v5: `queryFn: id === null ? skipToken : () => fetchProduct(id)`) — the `parseRouteId` parser in [`triad-advanced.md`](triad-advanced.md) [section 14](triad-advanced.md#14-typed-route-params--validated-at-the-boundary-the-vm-never-imports-the-router) already guarantees a positive integer or `null`, so the gate is just the null-check, and `skipToken` both disables the query and narrows `id` to `number` (no `as` cast); capability queries gated on their param the same way. (And map `isLoading` from `q.isLoading`, **not** `q.isPending`, on a gated query — a skipped query stays `isPending` forever; see [`triad-example.md`](triad-example.md) [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it).)
 - `getNextPageParam`: returns the next `skip` (e.g. `skip + limit`) while `skip + limit < total`, else `undefined` — it returns the next param, not a boolean.
-- Mutations invalidate the right key on settle; optimistic updates snapshot + rollback on error (worked end-to-end in [`triad-example.md`](triad-example.md) §17, behind a neutral `mutations/` hook).
+- Mutations invalidate the right key on settle; optimistic updates snapshot + rollback on error (worked end-to-end in [`triad-advanced.md`](triad-advanced.md) [section 17](triad-advanced.md#17-mutations--the-write-path-behind-a-neutral-hook-invalidation--optimistic-update), behind a neutral `mutations/` hook).
 - Zustand: selectors only; `persist` `partialize` excludes runtime-only flags; auth derived from token presence (a selector), not a duplicated flag; secrets in secure storage, prefs in fast KV.
 
 (List virtualization, memoized rows, and load-time derived display are stack-neutral
-RN best practices — they live in `mvvm-and-scaling.md` §2 Hygiene, not here.)
+RN best practices — they live in `mvvm-and-scaling.md` [section 2](mvvm-and-scaling.md#2-conformance-checklist-the-keep-it-faithful-core) Hygiene, not here.)
 
 ---
 
@@ -122,7 +168,7 @@ themselves or to a shell route.
 ---
 
 ## 5. Mapping taxonomy (RN)
-- **`transformers/`** `transform*`: **wire DTO → domain** (rename, *representation* derivations like cents-from-dollars, fallbacks; **domain rules** like `finalPrice`/`totalTimeMinutes` live in the model — the transformer only *invokes* them, never computes them here; runs once **at the fetch edge — the service's `queryFn`**, so the query/neutral hook already yields domain types; see [`triad-example.md`](triad-example.md) §2) **and domain → request** for create/update — both directions live together because they change for the same reason (the wire contract). *Don't* re-run wire→domain in the query `select` (that's for cheap view-shaping only, below).
+- **`transformers/`** `transform*`: **wire DTO → domain** (rename, *representation* derivations like cents-from-dollars, fallbacks; **domain rules** like `finalPrice`/`totalTimeMinutes` live in the model — the transformer only *invokes* them, never computes them here; runs once **at the fetch edge — the service's `queryFn`**, so the query/neutral hook already yields domain types; see [`triad-example.md`](triad-example.md) [section 2](triad-example.md#2-service--the-only-layer-that-touches-io-classifies-errors)) **and domain → request** for create/update — both directions live together because they change for the same reason (the wire contract). *Don't* re-run wire→domain in the query `select` (that's for cheap view-shaping only, below).
 - **`formatters/`** `to*`: domain → view-item/string; `to*Message` for error→copy. Primitives (`formatPrice`/`formatRating`/`formatDate`/`formatCount`) in `shared/formatters`.
 - **`parsers/`** `parse*`: user input → value (e.g. `parseQuantity("abc",{min,max})→min`); primitives (`parseInteger`/`parseDecimal`/`clamp`) in `shared/parsers`.
 - View-item types co-locate with their producing `to*`.
@@ -133,7 +179,7 @@ themselves or to a shell route.
 ## 6. Component & hook tiers (feature-based)
 - **Components:** screen-local (`screens/<S>/components/`) → feature-level (`features/<f>/components/`, 2+ screens or public) → shared (`shared/components/`, 2+ features).
 - **Hooks:** the **ViewModel is a hook** (`use<Screen>ViewModel`); *reusable* hooks live feature-level (`features/<f>/hooks/`, even if one screen uses it — a hook is feature logic) → shared (`shared/hooks/`, when a 2nd feature consumes it). Asymmetry: presentational components may be screen-local; reusable logic lives at feature level.
-- **UI hooks hold no data** (state/dimensions/scroll/animation/focus) — data orchestration stays in the ViewModel/queries. A pure UI hook is the one kind of hook the **View consumes directly** (the VM never mediates it; see [`triad-example.md`](triad-example.md) §21). Typical patterns: a password-visibility toggle, a quantity stepper (paired with `parseQuantity`), a responsive-columns hook, an avatar image→initials fallback, an expandable "read-more" text hook.
+- **UI hooks hold no data** (state/dimensions/scroll/animation/focus) — data orchestration stays in the ViewModel/queries. A pure UI hook is the one kind of hook the **View consumes directly** (the VM never mediates it; see [`triad-crosscutting.md`](triad-crosscutting.md) [section 21](triad-crosscutting.md#21-animations--gestures--a-ui-hook-that-holds-no-data-never-the-viewmodel)). Typical patterns: a password-visibility toggle, a quantity stepper (paired with `parseQuantity`), a responsive-columns hook, an avatar image→initials fallback, an expandable "read-more" text hook.
 - **Layers are optional:** a feature has only the folders it needs. A *capability feature* (e.g. `comments`) has no `screens/`/`navigation`; a *thin feature* (e.g. `profile`) has no `services/`/`queries/`/`models/`. A missing folder is not a defect — don't flag it against a fixed template.
 
 ---
@@ -147,7 +193,7 @@ Phased; each phase keeps tsc/lint/tests green.
 5. **Verify** after each feature: tsc/lint/tests + the boundary greps.
 
 For **feature → modular monolith** and **→ micro-frontend**, see the generic
-`mvvm-and-scaling.md` §4 (promote features to packages with build-enforced
+`mvvm-and-scaling.md` [section 4](mvvm-and-scaling.md#4-migration-playbooks-mechanical-moves-per-step) (promote features to packages with build-enforced
 boundaries; then independent build/deploy + runtime composition).
 
 ---
@@ -260,7 +306,7 @@ export function useLogout(): () => void {
 }
 ```
 
-**d) The `AuthBridge` port (the `api ⇄ auth` inversion, §4a in code).** Defined by the
+**d) The `AuthBridge` port (the `api ⇄ auth` inversion, [section 4a](#4-the-two-hard-inversions-feature-based) in code).** Defined by the
 side that *needs* auth (`shared/api`), implemented by the feature — so `shared` never
 imports a feature.
 
@@ -310,7 +356,7 @@ export const setupAuthInterceptors = () => attachAuthInterceptors(client, bridge
 
 ## 9. Testing the non-triad layers
 
-The triad's own tests are in [`triad-example.md`](triad-example.md) §9. The boundary
+The triad's own tests are in [`triad-example.md`](triad-example.md) [section 9](triad-example.md#9-tests--the-fake-vm-view-test--the-renderhook-vm-test). The boundary
 layers are tested too:
 
 - **Service** — mock the `client` (`jest.mock('@/shared/api/client')`); assert it
@@ -336,7 +382,7 @@ layers are tested too:
 
 ## 10. The same recipes on a contrasting stack (bare RN · React Navigation · Redux Toolkit · fetch)
 
-§1–§9 instantiate one popular stack. [`triad-example.md`](triad-example.md) §15
+[sections 1–9](#1-conformance-greps-run-from-the-project-root) instantiate one popular stack. [`triad-advanced.md`](triad-advanced.md) [section 15](triad-advanced.md#15-the-same-triad-on-another-stack--a-mobx-class-vm-an-rtk-query-swap-and-a-redux-client-state-vm)
 already proves the **triad** is stack-agnostic (MobX / RTK Query / Redux). This
 section proves the **operational recipes** are too — the greps, the I/O service, the
 coordinator — by re-deriving them for a deliberately different stack: **bare React
@@ -345,7 +391,7 @@ Native** (no Expo), **React Navigation**, **Redux Toolkit** for client state, an
 sits inside each layer changes. Copy *this* set if it matches your stack; otherwise
 read it as the template for writing your own.
 
-**a) Conformance greps for this stack** (the §1 probes, re-pointed at these libs):
+**a) Conformance greps for this stack** (the [section 1](#1-conformance-greps-run-from-the-project-root) probes, re-pointed at these libs):
 ```bash
 # ViewModels must not import the framework — stack-neutral, unchanged:
 grep -rEn "from ['\"]react-native['\"]" --include='*ViewModel*' src   # expect: none
@@ -357,13 +403,13 @@ grep -rEn '\bfetch\(' src --include='*.ts' --include='*.tsx' | grep -v '/service
 # React Navigation behind the facade, not in VMs/Views:
 grep -rEn "from ['\"]@react-navigation/(native|native-stack)['\"]" src   # expect: only navigation/ + the navigator setup
 grep -rEn '\buseNavigation\(' --include='*ViewModel*' --include='*View.tsx' src   # expect: none (VMs use the facade)
-# Views depend only on the VM contract — stack-neutral, unchanged from §1:
+# Views depend only on the VM contract — stack-neutral, unchanged from section 1:
 grep -rEn "from ['\"][^'\"]*/(services|queries|mutations|stores|coordinators|navigation)(/|['\"])" --include='*View.tsx' src   # expect: none
 # Redux whole-store selector (ISP leak) — same probe as the per-library table:
 grep -rEn 'useSelector\(\s*\(s\w*\)\s*=>\s*s\w*\s*\)' src   # expect: none — always a slice selector
 ```
 
-**b) The I/O service with `fetch`** — the same contract as §2 (`Promise<Product[]>`
+**b) The I/O service with `fetch`** — the same contract as [section 2](#2-feature-boundary-lint-recipe-eslint-flat-config-no-extra-plugins) (`Promise<Product[]>`
 plus a classified `AppError`); only the client changes. Two differences from axios:
 `fetch` does **not** reject on a non-2xx status (so the service checks `res.ok`
 itself), and `toAppError` here is the **fetch-aware** classifier — error classification
@@ -382,25 +428,25 @@ export async function fetchProducts(opts?: { signal?: AbortSignal }): Promise<Pr
     const res = await fetch('/products', { signal: opts?.signal });
     if (!res.ok) throw toAppError({ status: res.status }); // HTTP status → domain error (no literal thrown)
     const data: { products: ProductDTO[] } = await res.json();
-    return data.products.map(transformProduct);            // wire → domain at the edge (same as §2)
+    return data.products.map(transformProduct);            // wire → domain at the edge (same as section 2)
   } catch (e) {
     throw toAppError(e);                                   // transport / parse error → domain error (idempotent on the line above)
   }
 }
 ```
 With **no server-state lib**, the VM owns fetch + cancellation directly — that is the
-[`triad-example.md`](triad-example.md) §12 VM verbatim (it already returns the §6
+[`triad-advanced.md`](triad-advanced.md) [section 12](triad-advanced.md#12-alternative--no-server-state-library-the-vm-owns-fetch--cancellation) VM verbatim (it already returns the [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)
 `ProductsVM` contract, so the View/Screen/test are unchanged). Add TanStack/RTK Query
 later and only the `queries/` hook appears.
 
-**c) Navigation facade + client store** — same *shape* as §8a/§8b, different imports.
-The React Navigation facade is the §8a swap target (`navigationRef.reset(...)`,
+**c) Navigation facade + client store** — same *shape* as [section 8a](#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios)/[section 8b](#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios), different imports.
+The React Navigation facade is the [section 8a](#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios) swap target (`navigationRef.reset(...)`,
 `goBack()`), and the Redux client-state slice + selectors are
-[`triad-example.md`](triad-example.md) §15c (the slice is the boundary; the VM
+[`triad-advanced.md`](triad-advanced.md) [section 15c](triad-advanced.md#15-the-same-triad-on-another-stack--a-mobx-class-vm-an-rtk-query-swap-and-a-redux-client-state-vm) (the slice is the boundary; the VM
 subscribes via a slice selector, never `useSelector((s) => s)`). The VM calls the
 facade's intent methods and reads a selector — exactly as in the canonical stack.
 
-**d) Logout coordinator with no `QueryClient`** — the §8c teardown, minus the
+**d) Logout coordinator with no `QueryClient`** — the [section 8c](#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios) teardown, minus the
 server-state cache (there's no TanStack here; server data lives in the Redux store, or
 in an RTK Query API slice). Teardown still lives in the coordinator, **never** a
 reducer or a View:
@@ -417,7 +463,7 @@ export function makeLogout(store: AppStore) {
     appNavigation.goToLogin();              // 2. navigate to the shell route
   };
 }
-// Exposed to the VM through a neutral hook, exactly like §8c's useLogout — but built on
+// Exposed to the VM through a neutral hook, exactly like section 8c's useLogout — but built on
 // `useStore()` from react-redux instead of `useQueryClient()`. The VM still calls
 // useLogout() and sees only a `() => void`; the store/dispatch wiring never reaches it.
 ```
@@ -436,18 +482,18 @@ the symptom to the rule and the section that shows the correct shape.
 
 | Mistake (what you'll see in review) | Rule broken | The fix | Worked in |
 |---|---|---|---|
-| A formatter reads the locale from a **global i18n singleton** (`i18n.t(...)` inside a pure `to*`) | formatter purity / hidden dependency | thread `locale`/`t` from the VM as an argument | [`triad-example.md`](triad-example.md) §19 |
-| The VM calls `useQueryClient()` / `new QueryClient()` to wire logout | server-state lib leaking into the VM | consume a neutral coordinator hook (`useLogout()`) | §8c · [`triad-example.md`](triad-example.md) |
-| `useStore()` / `useSelector((s) => s)` — whole-store subscription | ISP | subscribe to a slice selector | §1 grep · §3 |
-| A View computes `loading`/`empty` (`if (!data) …`) instead of branching on `status` | passive-View / the View decides | move the decision into the VM's discriminated `status` | [`triad-example.md`](triad-example.md) §6–§7 |
-| Inline copy / `accessibilityLabel` string literals in a View | copy centralization / i18n | source ready strings from the VM (via `t`) | [`triad-example.md`](triad-example.md) §19–§20 |
-| Animation/`useSharedValue` state placed in the ViewModel | VM imports no `react-native` | move it to a UI hook (or the View) | [`triad-example.md`](triad-example.md) §21 |
-| `useSuspenseQuery` (or `use(promise)`) called inside the VM | suspend at the query boundary, not the VM | suspend in `queries/`; the VM stays `status`-keyed | [`triad-example.md`](triad-example.md) §22 |
-| Server data hand-copied into a Zustand/Redux slice that mirrors the API | server state belongs to the query layer | keep it in `queries/`; derive, don't duplicate | `mvvm-and-scaling.md` §1 |
-| Building `stores/`/`queries/`/`parsers/` on day one "to be safe" | over-engineering (adoption ladder) | start at the §0 quickstart; add a layer when a reason to change appears | `conventions.md` |
-| A `mappers/` folder | the umbrella is not a folder | use `transformers/`/`formatters/`/`parsers/` | `mvvm-and-scaling.md` §1 |
-| A `utils/` / `helpers/` / `misc/` catch-all | SRP — a grab-bag carries many reasons to change | name each by its reason: a transformer/formatter/parser, a model use-case, or a `shared/` primitive | `conventions.md` glossary |
-| A `presenters/` folder | ambiguous ownership — the role is already split | domain→view-item is the **formatter**; "what to show" is the **ViewModel** | `triad-example.md` §4 · §6 |
+| A formatter reads the locale from a **global i18n singleton** (`i18n.t(...)` inside a pure `to*`) | formatter purity / hidden dependency | thread `locale`/`t` from the VM as an argument | [`triad-crosscutting.md`](triad-crosscutting.md) [section 19](triad-crosscutting.md#19-localization-i18n--the-locale-enters-through-the-vm-formatters-stay-pure) |
+| The VM calls `useQueryClient()` / `new QueryClient()` to wire logout | server-state lib leaking into the VM | consume a neutral coordinator hook (`useLogout()`) | [section 8c](#8-the-boundaries-in-code-this-stack-expo-router--zustand--tanstack--axios) · [`triad-example.md`](triad-example.md) |
+| `useStore()` / `useSelector((s) => s)` — whole-store subscription | ISP | subscribe to a slice selector | [section 1](#1-conformance-greps-run-from-the-project-root) grep · [section 3](#3-rn-react-query--zustand-specifics-to-verify) |
+| A View computes `loading`/`empty` (`if (!data) …`) instead of branching on `status` | passive-View / the View decides | move the decision into the VM's discriminated `status` | [`triad-example.md`](triad-example.md) [sections 6–7](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union) |
+| Inline copy / `accessibilityLabel` string literals in a View | copy centralization / i18n | source ready strings from the VM (via `t`) | [`triad-example.md`](triad-example.md) [sections 19–20](triad-crosscutting.md#19-localization-i18n--the-locale-enters-through-the-vm-formatters-stay-pure) |
+| Animation/`useSharedValue` state placed in the ViewModel | VM imports no `react-native` | move it to a UI hook (or the View) | [`triad-crosscutting.md`](triad-crosscutting.md) [section 21](triad-crosscutting.md#21-animations--gestures--a-ui-hook-that-holds-no-data-never-the-viewmodel) |
+| `useSuspenseQuery` (or `use(promise)`) called inside the VM | suspend at the query boundary, not the VM | suspend in `queries/`; the VM stays `status`-keyed | [`triad-crosscutting.md`](triad-crosscutting.md) [section 22](triad-crosscutting.md#22-suspense--suspend-at-the-query-boundary-never-from-the-viewmodel) |
+| Server data hand-copied into a Zustand/Redux slice that mirrors the API | server state belongs to the query layer | keep it in `queries/`; derive, don't duplicate | `mvvm-and-scaling.md` [section 1](mvvm-and-scaling.md#1-layer-responsibilities-the-contract) |
+| Building `stores/`/`queries/`/`parsers/` on day one "to be safe" | over-engineering (adoption ladder) | start at the section 0 quickstart; add a layer when a reason to change appears | `conventions.md` |
+| A `mappers/` folder | the umbrella is not a folder | use `transformers/`/`formatters/`/`parsers/` | `mvvm-and-scaling.md` [section 1](mvvm-and-scaling.md#1-layer-responsibilities-the-contract) |
+| A `utils/` / `helpers/` / `misc/` catch-all | SRP (Single Responsibility Principle) — a grab-bag carries many reasons to change | name each by its reason: a transformer/formatter/parser, a model use-case, or a `shared/` primitive | `conventions.md` glossary |
+| A `presenters/` folder | ambiguous ownership — the role is already split | domain→view-item is the **formatter**; "what to show" is the **ViewModel** | `triad-example.md` [section 4](triad-example.md#4-formatter--domain--view-item-pure-display-ready) · [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union) |
 
 The through-line: every mistake is one responsibility landing in the wrong layer. The
 remedy is never "tidy the file" — it's "move the reason-to-change to the layer that owns

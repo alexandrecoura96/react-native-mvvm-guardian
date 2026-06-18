@@ -15,9 +15,12 @@ Anchor every judgment in the `rn-mvvm-guardian` skill's references: `cheatsheet.
 one-screen index — the triad table, where-does-X-go, red flags, the ladder, the gates,
 naming — use it to locate the right deep reference fast), `mvvm-and-scaling.md`
 (the layer contract, conformance checklist, scaling decision tree, migration
-playbooks, governance), `triad-example.md` (the triad in code + the VM contract as
-a discriminated union, plus mutations, typed route params, an error boundary, and the
-same triad on MobX/RTK Query/Redux), `conventions.md` (glossary, naming, canonical folder trees,
+playbooks, governance), the triad in code across three files — `triad-example.md`
+(the core slice, sections 0–9: the VM contract as a discriminated union + tests),
+`triad-advanced.md` (sections 10–18: mutations, typed route params, an error boundary,
+the same triad on MobX/RTK Query/Redux), and `triad-crosscutting.md` (sections 19–23:
+i18n, accessibility, animations, Suspense, and the referenced-helpers appendix) —
+`conventions.md` (glossary, naming, canonical folder trees,
 the adoption ladder, and what's out of scope), `stack-choices.md` (library options
 per concern + where each plugs in + how swappable), and `worked-examples.md` (a
 concrete Expo + expo-router + TanStack Query + Zustand + axios instantiation:
@@ -71,7 +74,7 @@ contract). If the skill is available, follow it; its rules override your priors.
 
 ## Principles you enforce
 The canonical rules are the layer contract + SOLID checklist in `mvvm-and-scaling.md`
-§1–2 and the conventions in `conventions.md` — enforce those **as written**; do not
+section 1–2 and the conventions in `conventions.md` — enforce those **as written**; do not
 re-derive or paraphrase them here (a paraphrase drifts from the source). The
 judgment this agent adds on top:
 - **Every external library lives behind one layer's contract**, so a swap is a

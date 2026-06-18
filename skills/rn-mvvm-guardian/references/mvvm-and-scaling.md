@@ -22,7 +22,7 @@ principles here are shared across every stack.
 | **Store** | global client state; pure state container | navigate; clear caches; hold server state |
 | **Persistence** | a durable-storage adapter — secrets in secure store, prefs in fast KV; sits behind a store or backs the query cache | be imported by a VM/View; leak the storage API upward |
 | **Coordinator** | orchestrate actions that span concerns (e.g. logout = clear store + invalidate server-cache + navigate); holds no state of its own | hold UI state; format; be imported by a View |
-| **ViewModel** | screen state + behavior + "what to show" (ready strings/booleans + a **discriminated-union** `status`; see [`triad-example.md`](triad-example.md) §6) | import UI/render JSX; touch HTTP/router directly; format inline |
+| **ViewModel** | screen state + behavior + "what to show" (ready strings/booleans + a **discriminated-union** `status`; see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)) | import UI/render JSX; touch HTTP/router directly; format inline |
 | **View** | render the branch the VM resolved; forward events | format (`toFixed`/dates/templating); decide error/empty/loading; call service/store/query/navigation |
 | **Screen** | wiring: build the ViewModel, pass its output into the View as props | hold state, JSX layout, styles, or logic |
 
@@ -71,7 +71,7 @@ principles here are shared across every stack.
 > show: on a fault it maps to a ready message via a formatter; on success it includes
 > the value in `ready`. The View only ever receives `errorMessage?: string` /
 > `isError: boolean`, never the raw fault tag (it "decides nothing"). Worked in
-> [`triad-example.md`](triad-example.md) §10.
+> [`triad-advanced.md`](triad-advanced.md) [section 10](triad-advanced.md#10-controlled-inputs-forms--the-view-stays-dumb).
 
 > **Note — "mapper" is an umbrella, not a folder.** Where this contract says
 > *mapper* it means the three pure mapping layers collectively
@@ -94,7 +94,7 @@ principles here are shared across every stack.
 > **Note — model the VM contract as a discriminated union.** Make `status` the
 > discriminant and let each variant carry only its own data, so illegal states
 > (e.g. `loading` with data, `error` with items) are unrepresentable. Worked code:
-> [`triad-example.md`](triad-example.md) §6; how to model secondary states
+> [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union); how to model secondary states
 > (refreshing, load-more, partial error): [`conventions.md`](conventions.md).
 
 ### Layers are optional — a feature has only what it needs
@@ -122,7 +122,7 @@ responsibility, not a fixed template:
 - **UI hooks** (toggle/disclosure, keyboard, scroll, animation, expandable text,
   steppers…) hold **no data** — data orchestration stays in the ViewModel/queries.
   A **pure UI hook** is the one kind of hook the **View may consume directly**: the
-  ViewModel does not mediate it (see [`triad-example.md`](triad-example.md) §21 for the
+  ViewModel does not mediate it (see [`triad-crosscutting.md`](triad-crosscutting.md) [section 21](triad-crosscutting.md#21-animations--gestures--a-ui-hook-that-holds-no-data-never-the-viewmodel) for the
   canonical case). This also keeps the `<Screen>VM` contract free of pure-presentation
   state (`opacity`, `isKeyboardOpen`, `scrollY`, `isExpanded`) — but that is a
   *consequence*, not the criterion: the test is **presentation-vs-data**, never contract
@@ -141,7 +141,7 @@ substitution, pick one seam:
 
 - **`jest.mock('<facade/neutral-hook>')` — the default for a hook VM.** It keeps the
   production signature parameter-free (the canonical [`triad-example.md`](triad-example.md)
-  §6/§9 shape) and is the lightest seam. Use it unless you need to swap the dependency
+  [section 6](#6-where-does-this-go-quick-placement)/section 9 shape) and is the lightest seam. Use it unless you need to swap the dependency
   *outside* a test runner.
 - **An injectable hook param with real defaults** — when you also need runtime
   substitution (Storybook, a test harness app, multiple wirings). Shown below.
@@ -165,7 +165,7 @@ View consumes*. The pure layers (transformers/formatters/parsers/rules) are the 
 tested input→output. The boundary layers are tested too — **service** (mock the
 client; assert domain types + error classification), **coordinator** (fake
 collaborators + spy on the facade), **navigation facade** (mock the router) — worked
-in [`worked-examples.md`](worked-examples.md) §9.
+in [`worked-examples.md`](worked-examples.md) [section 9](worked-examples.md#9-testing-the-non-triad-layers).
 
 ### Feature composition (feature-based and up)
 
@@ -181,7 +181,7 @@ composable component/hook with no screen of its own. Keep the cross-feature grap
   server-state lib** the fetch lifecycle is *owned by the query layer* (`useQuery`
   inside the neutral `queries/` hook), so the VM has no fetch `useEffect` at all — it
   just consumes the hook; the manual `useEffect` + `AbortController` is the
-  *no-server-state-lib* path (see [`triad-example.md`](triad-example.md) §12). Either
+  *no-server-state-lib* path (see [`triad-advanced.md`](triad-advanced.md) [section 12](triad-advanced.md#12-alternative--no-server-state-library-the-vm-owns-fetch--cancellation)). Either
   way, guard against races (an `AbortController` or the data lib's cancellation) and
   never start effects from a View. **Lifecycle hooks owned by the navigation library**
   (`useFocusEffect`/`useIsFocused`, for "refetch on focus") are the one exception:
@@ -224,6 +224,122 @@ composable component/hook with no screen of its own. Keep the cross-feature grap
 
 ---
 
+### SOLID — the five principles, in plain terms (and in MVVM)
+
+**SOLID** is five design principles. You don't need prior exposure: each is one idea,
+shown below with a quick *bad* example, the *good* version, and how it lands in this
+MVVM contract. The conformance checklist in section 2 just *checks* these — this is
+the *why*. (`VM` = ViewModel throughout.)
+
+#### S — Single Responsibility Principle (SRP)
+
+*A piece of code should have **one reason to change**.* If a file changes for two
+unrelated reasons (the API moved **and** the date format changed), those are two
+responsibilities and belong in two places.
+
+```ts
+// ✗ Bad — one function fetches, formats, AND decides UI state (3 reasons to change)
+async function loadAndRenderPrice(id: number) {
+  const res = await fetch(`/products/${id}`);          // changes if the API changes
+  const p = await res.json();
+  return `$${(p.price / 100).toFixed(2)}`;             // changes if formatting changes
+}
+
+// ✓ Good — each reason isolated
+const fetchProduct = (id: number) => client.get(`/products/${id}`); // I/O (service)
+const formatPrice  = (cents: number) => `$${(cents / 100).toFixed(2)}`; // formatting
+```
+
+**In MVVM:** this is *the* core rule — the Service owns I/O, the formatter owns
+display strings, the ViewModel owns "what to show", the View owns rendering. One edit
+forcing three layers means a responsibility leaked.
+
+#### O — Open–Closed Principle (OCP)
+
+*Code should be **open to extension, closed to modification**.* Adding a case
+shouldn't mean editing a central `switch` everyone else depends on.
+
+```ts
+// ✗ Bad — every new screen edits this switch
+function iconFor(screen: string) {
+  switch (screen) { case 'products': return '🛍'; case 'cart': return '🛒'; /* …forever */ }
+}
+
+// ✓ Good — each feature contributes its own entry; the registry is never modified
+export const productsTab = { name: 'products', icon: '🛍', screen: ProductsScreen };
+export const tabs = [productsTab, cartTab /* , … */]; // adding a feature appends here
+```
+
+**In MVVM:** adding a screen/feature extends a registry or a list of contributions
+rather than editing a shared file (worked end-to-end in
+[`triad-example.md`](triad-advanced.md#11-openclosed-in-practice--extend-a-registry-dont-edit-a-switch)).
+
+#### L — Liskov Substitution Principle (LSP)
+
+*Anything honoring a contract must be **substitutable** for the real thing* without
+the caller noticing. Here it's read through interfaces, not class inheritance: any VM
+that satisfies a screen's contract can stand in for the real one.
+
+```ts
+// ✗ Bad — the View secretly assumes more than the contract promises
+function View(vm: ProductsVM) {
+  return <Text>{(vm as any).internalCache.items.length}</Text>; // reaches past the contract
+}
+
+// ✓ Good — the View uses only what the contract exposes, so a fake VM works identically
+function View(vm: ProductsVM) {
+  return vm.status === 'ready' ? <List items={vm.items} /> : <Spinner />;
+}
+```
+
+**In MVVM:** this is exactly what makes the **fake-VM test** valid — a hand-built
+object satisfying `ProductsVM` renders the View correctly because the View makes no
+hidden assumptions beyond the contract.
+
+#### I — Interface Segregation Principle (ISP)
+
+*Don't force a consumer to depend on more than it uses.* Subscribe to the slice you
+need, not the whole thing.
+
+```ts
+// ✗ Bad — subscribes to the WHOLE store; re-renders on every unrelated change
+const everything = useStore();
+const name = everything.user.name;
+
+// ✓ Good — subscribes to one slice via a selector; re-renders only when name changes
+const name = useStore((s) => s.user.name);
+```
+
+**In MVVM:** ViewModels read **minimal store slices** through selectors, and a
+feature's public surface exposes only what others need — never the whole internals.
+
+#### D — Dependency Inversion Principle (DIP)
+
+*Depend on **abstractions**, not concretions.* High-level code (the VM) shouldn't
+import a low-level detail (axios, the router); it depends on a stable contract, and
+the detail sits behind it.
+
+```ts
+// ✗ Bad — the VM imports the concrete HTTP client and router directly
+import axios from 'axios';
+import { router } from 'expo-router';
+
+// ✓ Good — the VM depends on abstractions; the concretions live behind them
+import { fetchProducts } from '../services/productService'; // service hides axios
+import { appNavigation } from '@/shared/navigation/appNavigation'; // facade hides the router
+```
+
+**In MVVM:** every external library lives behind one layer's contract (HTTP in
+`services/`, the router behind a `navigation/` facade, server state behind a neutral
+`queries/` hook). The VM depends on those contracts and on intent-named pure
+functions (transformers/formatters/parsers) — never on a concrete library.
+
+> **The through-line:** all five reduce to *"each piece of code has one reason to
+> change and depends only on stable contracts."* SRP names it, DIP/ISP keep
+> dependencies thin and inverted, OCP/LSP keep extension and substitution safe.
+
+---
+
 ## 2. Conformance checklist (the "keep it faithful" core)
 
 Run these and report findings with `file:line` + severity. Adapt greps to the
@@ -231,8 +347,8 @@ language/framework.
 
 **Triad**
 - [ ] Each Screen is wiring only (no state/JSX/styles/logic).
-- [ ] Each ViewModel imports no `react-native` and renders no JSX (importing `react` itself — `useState`/`useMemo`/etc. — is fine) and exposes an explicit interface/contract — **preferably a discriminated-union `status`** (see [`triad-example.md`](triad-example.md) §6) with ready values (formatted strings, booleans for visibility) inside each variant; flat flags (`error: string|null`) only for trivial cases (simple forms, triad §10).
-- [ ] Each View formats nothing (`toFixed`, date formatting, display-string templating) and decides no error/empty/loading state — the VM exposes a discriminated `status`/booleans and the View only branches on it (a `switch`/early-return), never computing the condition itself. A `status` `switch` ends on `default: assertNever(vm)` so a new variant fails to compile and never renders `undefined` at runtime (see [`triad-example.md`](triad-example.md) §7).
+- [ ] Each ViewModel imports no `react-native` and renders no JSX (importing `react` itself — `useState`/`useMemo`/etc. — is fine) and exposes an explicit interface/contract — **preferably a discriminated-union `status`** (see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)) with ready values (formatted strings, booleans for visibility) inside each variant; flat flags (`error: string|null`) only for trivial cases (simple forms, triad [section 10](triad-advanced.md#10-controlled-inputs-forms--the-view-stays-dumb)).
+- [ ] Each View formats nothing (`toFixed`, date formatting, display-string templating) and decides no error/empty/loading state — the VM exposes a discriminated `status`/booleans and the View only branches on it (a `switch`/early-return), never computing the condition itself. A `status` `switch` ends on `default: assertNever(vm)` so a new variant fails to compile and never renders `undefined` at runtime (see [`triad-example.md`](triad-example.md) [section 7](triad-example.md#7-view--passive-only-branches-on-status-formats-nothing)).
 - [ ] Views don't import services/queries/stores/navigation directly.
 
 **Mapping layers**
@@ -240,12 +356,12 @@ language/framework.
 - [ ] Display formatting lives in one place; primitives are shared (no duplicated `toFixed`/currency/date logic).
 - [ ] User input is parsed/validated at a boundary with safe fallbacks (if the app has forms).
 
-**SOLID**
-- [ ] **S** — one reason to change per layer; teardown that spans concerns (e.g. logout = clear state + cache + navigate) lives in a coordinator, not the store.
-- [ ] **O** — adding a screen/feature doesn't edit a central registry; clients/factories are extended, not modified.
-- [ ] **L** — *(substitutability-by-contract: LSP read through the screen's VM interface, not class subtyping)* any ViewModel honoring a screen's contract is substitutable for the real one: a View behaves correctly with a fake VM that satisfies the interface (no hidden assumptions beyond the contract), which is exactly what makes the fake-VM test valid.
-- [ ] **I** — consumers subscribe to the minimal store slice (selectors, not whole-store); public surfaces expose only what's needed.
-- [ ] **D** — ViewModels depend on abstractions (navigation facade, services-behind-queries) and on **intent-named pure functions** (transformers/formatters/parsers). These pure functions form a stable input→output contract and are swappable without breaking callers, so depending on them directly is safe (DIP is about the *direction of dependency on a stable contract*, not about side-effect-freeness per se). The VM never depends on **concretions** (the HTTP client or the router directly) nor on unexported internal utilities — those are the DIP side-steps to catch in review.
+**SOLID** (each principle explained with examples in [SOLID — the five principles, in plain terms](#solid--the-five-principles-in-plain-terms-and-in-mvvm) above)
+- [ ] **S — Single Responsibility Principle.** One reason to change per layer; teardown that spans concerns (e.g. logout = clear state + cache + navigate) lives in a coordinator, not the store.
+- [ ] **O — Open–Closed Principle.** Adding a screen/feature doesn't edit a central registry; clients/factories are extended, not modified.
+- [ ] **L — Liskov Substitution Principle.** *(Substitutability-by-contract: LSP read through the screen's VM interface, not class subtyping.)* Any ViewModel honoring a screen's contract is substitutable for the real one: a View behaves correctly with a fake VM that satisfies the interface (no hidden assumptions beyond the contract), which is exactly what makes the fake-VM test valid.
+- [ ] **I — Interface Segregation Principle.** Consumers subscribe to the minimal store slice (selectors, not whole-store); public surfaces expose only what's needed.
+- [ ] **D — Dependency Inversion Principle.** ViewModels depend on abstractions (navigation facade, services-behind-queries) and on **intent-named pure functions** (transformers/formatters/parsers). These pure functions form a stable input→output contract and are swappable without breaking callers, so depending on them directly is safe (DIP is about the *direction of dependency on a stable contract*, not about side-effect-freeness per se). The VM never depends on **concretions** (the HTTP client or the router directly) nor on unexported internal utilities — those are the DIP side-steps to catch in review.
 
 **Structure & reuse**
 - [ ] Layers present match the feature's responsibility — a *missing* `queries`/`mutations`/`services`/`models`/`screens` folder is fine (capability features have no screen; thin features no service/query). Do NOT flag absence against a fixed template.
@@ -259,7 +375,7 @@ language/framework.
 - [ ] Remote/large images are sized and cached deliberately — explicit `width`/`height` (no unbounded intrinsic size), a sensible `resizeMode`, and a caching layer when scroll performance demands it. The *principle* is the rule; the library is just an instance (RN's core `Image` caches modestly; a dedicated caching-capable component — e.g. `expo-image` — is an **option, not a requirement**, picked like any other entry in [`stack-choices.md`](stack-choices.md)). Unbounded/uncached images are a common RN memory + scroll-jank source. (Image choice is a View concern; the source URL is a ready value the VM hands down.)
 - [ ] VM outputs passed to memoized Views have **stable references** (`useCallback`/`useMemo`); recreating handlers/objects each render defeats `memo()` and the virtualization gains above.
 - [ ] Derived/time-based display is computed at load (in a transformer/formatter or on mount), **not** via a `setInterval` re-render — *unless* the display is genuinely live (a countdown, ticking relative time), in which case the ticking lives in a dedicated **UI hook** (which holds no data), never scattered in a View or VM body.
-- [ ] Views carry accessibility metadata — a11y is a View concern, like layout: semantic **roles/labels** (`accessibilityRole`, `accessibilityLabel`/`accessibilityHint`, `accessibilityState` for selected/disabled/busy); **touch targets ≥ 44×44pt on iOS / 48×48dp on Android** (`hitSlop` where needed); a sensible **screen-reader reading order** (group related nodes with `accessible`, set `accessibilityElementsHidden`/`importantForAccessibility` on decorative layers); **respects OS text scaling** (don't blanket-disable `allowFontScaling`; let layouts reflow) and **reduce-motion** (`AccessibilityInfo.isReduceMotionEnabled` gates non-essential animation). Accessibility **copy** is user-facing text → it follows the same centralization/i18n rule (it comes from the VM/constants, never an inline literal — see the i18n note and triad §7). Whether an element is *announced* may be a VM decision (a ready `accessibilityLabel` string on the view-item); how it's *rendered* is the View's.
+- [ ] Views carry accessibility metadata — a11y is a View concern, like layout: semantic **roles/labels** (`accessibilityRole`, `accessibilityLabel`/`accessibilityHint`, `accessibilityState` for selected/disabled/busy); **touch targets ≥ 44×44pt on iOS / 48×48dp on Android** (`hitSlop` where needed); a sensible **screen-reader reading order** (group related nodes with `accessible`, set `accessibilityElementsHidden`/`importantForAccessibility` on decorative layers); **respects OS text scaling** (don't blanket-disable `allowFontScaling`; let layouts reflow) and **reduce-motion** (`AccessibilityInfo.isReduceMotionEnabled` gates non-essential animation). Accessibility **copy** is user-facing text → it follows the same centralization/i18n rule (it comes from the VM/constants, never an inline literal — see the i18n note and triad [section 7](triad-example.md#7-view--passive-only-branches-on-status-formats-nothing)). Whether an element is *announced* may be a VM decision (a ready `accessibilityLabel` string on the view-item); how it's *rendered* is the View's.
 - [ ] Render-time failures are contained by an **error boundary** registered at the navigator/`app/` level (or a dedicated `shared/components` wrapper), with a typed fallback — not inline JSX in a Screen.
 - [ ] Co-located tests per layer; pure layers (transformers/formatters/parsers/rules) tested input→output; ViewModels tested via their contract; Views with a fake VM.
 - [ ] No `any`/dead code/leftover logs; strict typing on.
@@ -295,7 +411,7 @@ language/framework.
 
 - **Stay screen-based** for a small–medium app, one small team, shared models/services. *Outgrown when:* flat `screens/`/`services/`/`queries/` get crowded; unrelated screens share a neighborhood; people step on each other in one shared tree.
 - **Go feature-based** when there are several distinct areas and a few teams, and you want each area understandable/ownable in isolation. *Outgrown when:* features must be **built, released, or owned** independently.
-- **Go modular monolith** when you need enforced isolation but still one build/deploy — features become packages; cross-feature imports blocked by tooling. *Usually the right next step* (most of the benefit, far less cost than MFE).
+- **Go modular monolith** when you need enforced isolation but still one build/deploy — features become packages; cross-feature imports blocked by tooling. *Usually the right next step* (most of the benefit, far less cost than a micro-frontend, **MFE**).
 - **Go micro-frontend** only when independent **deployment** (not just development) is a genuine requirement — separate teams, separate release pipelines, runtime composition. Real overhead (versioning, contracts, shared-deps, composition).
 
 > **The ladder is reversible.** If a rung's isolation isn't paying for its cost,
@@ -316,7 +432,7 @@ The climbs below *add* a rung. This one is orthogonal: the layers exist but are
 **wrong** (Views format, VMs import `react-native`/the router, services scattered,
 state living in components). Restore fidelity incrementally — don't rewrite.
 
-1. Run the conformance checklist (§2) on one representative screen; record the top 3
+1. Run the conformance checklist ([section 2](#2-conformance-checklist-the-keep-it-faithful-core)) on one representative screen; record the top 3
    violations with `file:line`.
 2. Move each violation to its owning layer — a *move*, not a redesign:
    - **View formats** (`toFixed`/date/template) → create a `formatters/` fn; the VM
@@ -360,7 +476,8 @@ state living in components). Restore fidelity incrementally — don't rewrite.
 > navigation/gesture/reanimated libs) **must be singletons** — a second copy
 > crashes at runtime; share them as host-provided externals. Watch version skew
 > across units, Hermes bytecode compatibility, and how remote units interact with
-> OTA (EAS Update, or the community CodePush fork — Microsoft's App Center CodePush
+> OTA (Over-The-Air updates — EAS Update, or the community CodePush fork — Microsoft's
+> App Center CodePush
 > was retired in 2025) — a federated remote and an OTA bundle are two update
 > channels that must agree.
 
@@ -375,22 +492,11 @@ state living in components). Restore fidelity incrementally — don't rewrite.
 
 ## 6. Where does this go? (quick placement)
 
-| You're adding… | It goes in… |
-|---|---|
-| A new screen | a Screen+View+ViewModel triad (`screens/` or `features/<f>/screens/`) |
-| Visual layout / styling | the **View** |
-| Screen state / an event handler / "what to show" | the **ViewModel** |
-| Domain computation (totals, eligibility) | a **use-case** in the model — the VM *calls* it |
-| Reusable UI/interaction logic | a **hook** (`features/<f>/hooks/` → `shared/hooks/`) |
-| API response → domain | a **transformer** (`transform*`) |
-| Domain → display string | a **formatter** (`to*`) |
-| User input → value | a **parser** (`parse*`) |
-| A new HTTP call | a **service** |
-| Caching / pagination / retry | a **query/mutation** |
-| Global client state | a **store** (teardown spanning concerns → a coordinator, not the store) |
-| A navigation target | the navigation facade (shell) or the feature's `navigation.ts` (deep route) |
-| User-facing text / routes | centralized constants |
-| Something one feature needs from another | export it from that feature's public API; import the feature root |
+The placement table lives in **one** place to avoid drift: the cheatsheet's
+[Where does X go?](cheatsheet.md#where-does-x-go) — a row per thing you're adding
+(screen, layout, state, transformer/formatter/parser, service, query/mutation, store,
+navigation target, model use-case, reusable hook, cross-feature surface) and the layer
+that owns it.
 
 If a change doesn't fit one row, it's probably two changes in two layers — split it.
 
@@ -416,15 +522,15 @@ Architecture decays without enforcement. For multi-team / multi-year projects:
           with: { node-version: 20, cache: npm }
         - run: npm ci
         - run: npx tsc --noEmit          # type gate (0 errors)
-        - run: npx eslint .              # lint + the no-restricted-imports boundary rules (§4 playbook / worked-examples §2)
+        - run: npx eslint .              # lint + the no-restricted-imports boundary rules (section 4 playbook / worked-examples section 2)
         - run: npm test -- --ci          # the behavior gate
         # feature-based and up: fail the build on a deep cross-feature import.
-        # test-utils is opted out, to match the ESLint rule + the §1 grep in worked-examples.
+        # test-utils is opted out, to match the ESLint rule + the section 1 grep in worked-examples.
         - run: "! grep -rEn '@/features/[a-z0-9-]+/[a-zA-Z]' src --include='*.ts' --include='*.tsx' | grep -v 'src/shared/test-utils/'"
   ```
   This minimal job gates the deep-import boundary only; the `shared/ → feature` and
-  alias-to-self checks (worked-examples §1) ride along on the `eslint .` step above.
+  alias-to-self checks (worked-examples [section 1](worked-examples.md#1-conformance-greps-run-from-the-project-root)) ride along on the `eslint .` step above.
 - **Assign ownership.** `CODEOWNERS` per feature/package, so the owning team reviews
   changes that cross their public API.
 - **Record decisions.** Capture architectural choices (a rung climb, a new port, a
-  stack swap) as short ADRs, so the *why* outlives the people who decided it.
+  stack swap) as short ADRs (Architecture Decision Records), so the *why* outlives the people who decided it.

@@ -10,7 +10,21 @@ this material does **not** yet prescribe in depth. Pairs with
 
 ## Glossary
 
-- **Triad** — Model + View + ViewModel: the invariant core, the same on every rung.
+> **Acronyms used throughout, spelled out once here** (so no term assumes prior
+> architecture knowledge):
+> **MVVM** = Model–View–ViewModel · **SOLID** = the five object-oriented design
+> principles **S**RP/**O**CP/**L**SP/**I**SP/**D**IP (Single Responsibility,
+> Open–Closed, Liskov Substitution, Interface Segregation, Dependency Inversion —
+> each explained with examples in
+> [`mvvm-and-scaling.md`](mvvm-and-scaling.md#solid--the-five-principles-in-plain-terms-and-in-mvvm))
+> · **DTO** = Data Transfer Object (the wire shape an API sends) · **I/O** =
+> Input/Output (network + device reads/writes) · **DI** = Dependency Injection ·
+> **a11y** = accessibility · **PII** = Personally Identifiable Information · **KV** =
+> key–value storage · **OTA** = Over-The-Air update · **ADR** = Architecture
+> Decision Record · **CI** = Continuous Integration · **RN** = React Native · **VM** =
+> ViewModel (used as shorthand throughout) · **MFE** = micro-frontend.
+
+- **Triad** — Model + View + ViewModel (**MVVM**): the invariant core, the same on every rung.
 - **Screen** — the per-screen *composition root* that wires the triad (calls the VM
   hook, passes its output to the View). Not part of the classic triad, but an
   invariant role here.
@@ -58,7 +72,7 @@ this material does **not** yet prescribe in depth. Pairs with
 - **Persistence** — a durable-storage adapter (secure store / fast KV / async
   storage) that sits behind a store or backs the query cache; never imported by a
   VM/View.
-- **DTO** — the wire/transport shape the API returns; lives with the transformer that
+- **DTO** (Data Transfer Object) — the wire/transport shape the API returns; lives with the transformer that
   consumes it, and is **never** used as a domain type.
 - **Use-case (domain function)** — a pure function in the model layer that holds
   domain computation/rules (e.g. `computeCartTotal`); the VM *calls* it instead of
@@ -89,7 +103,7 @@ this material does **not** yet prescribe in depth. Pairs with
 
 > The `<Screen>VM` **contract type lives in its own file** (`viewmodels/<Screen>VM.ts`),
 > imported by *both* the ViewModel hook and the View — so the View never imports the
-> hook, only the contract (see [`triad-example.md`](triad-example.md) §6). At Rung 1
+> hook, only the contract (see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)). At Rung 1
 > a tiny app may co-locate the type in the hook file; because the View imports it
 > `type`-only (erased at compile time) there's no runtime coupling either way —
 > split it into its own file once the feature grows.
@@ -107,7 +121,7 @@ The three hook kinds have distinct consumers — keep them straight:
 A **pure UI hook is the one hook a View may consume directly** — animation, gesture,
 keyboard, scroll/focus, visibility toggle, disclosure, responsive dimensions,
 "read-more". The ViewModel does not mediate it (canonical case:
-[`triad-example.md`](triad-example.md) §21). The decision rule is the hook's **nature**,
+[`triad-crosscutting.md`](triad-crosscutting.md) [section 21](triad-crosscutting.md#21-animations--gestures--a-ui-hook-that-holds-no-data-never-the-viewmodel)). The decision rule is the hook's **nature**,
 not its size: if it touches data, a business decision, or "what to show", it goes in the
 ViewModel. Keeping pure-presentation state out of the contract (so `<Screen>VM` carries
 no `opacity`/`isKeyboardOpen`/`scrollY`) is a **consequence** of that rule, never the
@@ -210,13 +224,13 @@ contracts/                  # the versioned seam between units
 ```
 `react`/`react-native` (and any lib holding native state — navigation/gesture/
 reanimated) are **host-provided singletons**; units agree on versioned contracts;
-OTA and federated remotes are two update channels that must agree (see
-[`mvvm-and-scaling.md`](mvvm-and-scaling.md) §4).
+OTA (Over-The-Air) updates and federated remotes are two update channels that must agree (see
+[`mvvm-and-scaling.md`](mvvm-and-scaling.md) [section 4](mvvm-and-scaling.md#4-migration-playbooks-mechanical-moves-per-step)).
 
 ## Modeling the VM contract (state)
 
 Prefer a **discriminated union** keyed on `status` so illegal states can't be
-represented (see [`triad-example.md`](triad-example.md) §6). Extend the variants as
+represented (see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)). Extend the variants as
 the screen needs:
 
 | Variant | Carries | When |
@@ -249,13 +263,13 @@ Over-building is the most common failure. Start minimal; add a layer only when a
    No store, no queries, no parsers. The VM calls the service and holds the result
    in local state (the documented no-`queries/` case in `stack-choices.md`).
    **Copyable starting point:** the ~40-line quickstart in
-   [`triad-example.md`](triad-example.md) §0.
+   [`triad-example.md`](triad-example.md) [section 0](triad-example.md#0-quickstart--the-smallest-faithful-slice-rung-1-40-lines).
 2. **+ server-state needs** (cache / refetch / pagination) → add `queries/` +
    `mutations/` (or a neutral data hook); the VM now depends on the hook.
 3. **+ shared client state** → add `stores/`; a cross-concern teardown → a `coordinator`.
 4. **+ forms** → add `parsers/`.
 5. **Several areas / a few teams** → climb to feature-based (see the migration
-   playbook in `mvvm-and-scaling.md` §4).
+   playbook in `mvvm-and-scaling.md` [section 4](mvvm-and-scaling.md#4-migration-playbooks-mechanical-moves-per-step)).
 
 The full layer vocabulary (the 11 layers in the contract table, plus the Screen
 composition-root role) is the *complete* toolbox, not a checklist to instantiate on
@@ -263,12 +277,12 @@ day one.
 
 ### How much to build, by app size (the same ladder, read as a matrix)
 
-A quick gut-check so "any porte" is concrete — match the *smallest* row that fits, and
+A quick gut-check so "any app size" is concrete — match the *smallest* row that fits, and
 let real pain (not this table) push you down a row:
 
 | App / team | Rung | Build | Don't build (yet) |
 |---|---|---|---|
-| Prototype / 1–3 screens, one dev | screen-based | Model + View + ViewModel + Screen, one `service`, one `formatter` (the §0 quickstart) | queries, stores, parsers, transformers, coordinators, navigation facade |
+| Prototype / 1–3 screens, one dev | screen-based | Model + View + ViewModel + Screen, one `service`, one `formatter` (the section 0 quickstart) | queries, stores, parsers, transformers, coordinators, navigation facade |
 | Small app / handful of screens, one small team | screen-based | + `queries/` (when caching/refetch is real) · `transformers/` (when wire ≠ domain) · `navigation/` facade · `parsers/` (when forms appear) | features/, build boundaries, packages |
 | Growing app / several distinct areas, a few teams | feature-based | vertical `features/<f>/`, public `index.ts` per feature, the `no-restricted-imports` boundary lint, `shared/` | packages, independent builds |
 | Large app / many areas needing enforced isolation, one build | modular monolith | feature **packages** in a workspace, build-enforced boundaries, Metro `watchFolders` + one RN instance | independent deploy pipelines |
@@ -285,18 +299,18 @@ discipline — *confine the library to one layer behind a neutral contract*. Sum
 [`stack-choices.md`](stack-choices.md) names where each plugs in:
 
 - **Observability** (analytics / logging / crash reporting) — fired from the VM
-  (intent) or a thin service; never from the View → integration-recipes §1.
+  (intent) or a thin service; never from the View → integration-recipes [section 1](integration-recipes.md#1-observability--analytics-logging-crash-reporting-fired-from-the-vm-never-the-view).
 - **Real-time** (WebSocket / SSE / subscriptions) — a `services/` stream adapter
-  feeding a query/store; the VM consumes a neutral shape → integration-recipes §2.
+  feeding a query/store; the VM consumes a neutral shape → integration-recipes [section 2](integration-recipes.md#2-real-time--websocket--sse--subscriptions-a-services-stream-adapter-feeding-the-cache).
 - **Offline-first / sync** (WatermelonDB / RxDB / Replicache, query-cache
   persistence) — a persistence adapter + a sync coordinator; sync logic never leaks
-  into Views/VMs → integration-recipes §3.
+  into Views/VMs → integration-recipes [section 3](integration-recipes.md#3-offline-first--sync--a-persistence-adapter-behind-the-cache--a-sync-coordinator).
 - **GraphQL** (Apollo / urql / Relay) — fuses HTTP + cache; map "client+cache" onto
-  the server-state boundary and keep the VM on a neutral hook → integration-recipes §4.
+  the server-state boundary and keep the VM on a neutral hook → integration-recipes [section 4](integration-recipes.md#4-graphql--the-client-is-the-server-state-boundary-the-vm-depends-on-a-neutral-hook).
 - **Deep linking & typed route params** — owned by the navigation facade; validate
-  params with a `parser` at the boundary → integration-recipes §5 (+ [`triad-example.md`](triad-example.md) §14).
+  params with a `parser` at the boundary → integration-recipes [section 5](integration-recipes.md#5-deep-linking--the-inbound-url-is-untrusted-input-validated-by-a-parser-at-the-boundary) (+ [`triad-advanced.md`](triad-advanced.md) [section 14](triad-advanced.md#14-typed-route-params--validated-at-the-boundary-the-vm-never-imports-the-router)).
 - **Security** (token lifecycle, cert pinning, PII) — token logic behind the auth
-  service / `AuthBridge`; secrets in secure storage → integration-recipes §6.
+  service / `AuthBridge`; secrets in secure storage → integration-recipes [section 6](integration-recipes.md#6-security--token-lifecycle-secret-storage-pii-behind-the-auth-service--authbridge).
 
 Two further concerns are covered **outside** that file, because they change tooling, not the
 triad:
@@ -308,7 +322,7 @@ triad:
   UI hook or the View — never the VM.
 - **CI/CD & governance** — wire the gates (typecheck / lint / test / boundary) into
   CI + pre-commit; record architecture decisions as ADRs; assign ownership (e.g.
-  `CODEOWNERS`) so the contract survives team turnover (see [`mvvm-and-scaling.md`](mvvm-and-scaling.md) §7).
+  `CODEOWNERS`) so the contract survives team turnover (see [`mvvm-and-scaling.md`](mvvm-and-scaling.md) [section 7](mvvm-and-scaling.md#7-keeping-it-faithful-over-time-governance)).
 
 ## Assumed tooling
 
@@ -329,7 +343,7 @@ the Metro resolver (see the modular-monolith tree above).
 
 **Version floor.** The examples assume **React 18+** (`useId`, automatic batching),
 **TanStack Query v5** for the server-state slices (the `isPending`/`isLoading`/
-`isRefetching` semantics in §5–§6 — on v4 the names differ, but only the neutral
+`isRefetching` semantics in sections 5–6 — on v4 the names differ, but only the neutral
 `queries/` hook changes), and a **current React Native** (New Architecture default).
 Nothing here needs React 19, but the discriminated-union contract and the Suspense
 note above are written against this floor; on older majors, treat the modern APIs as

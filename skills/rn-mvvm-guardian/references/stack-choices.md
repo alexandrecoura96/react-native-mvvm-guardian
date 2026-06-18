@@ -11,7 +11,7 @@ swappable.
 | Concern | Options | Lives in (the boundary) | What the rest of the app depends on |
 |---|---|---|---|
 | **Navigation** | React Navigation · expo-router · custom | a `navigation/` facade (`appNavigation`, `useRouteId`, `useScreenTitle`) | the facade's intent-named methods — never the router |
-| **Server state / data fetching** | TanStack Query (formerly React Query) · SWR · RTK Query · hand-rolled hooks · none (call services directly from the VM) | `queries/` + `mutations/` | a feature-defined neutral shape — the **canonical** one is `useProductsData`'s `{ items, isLoading, isRefreshing, error, refetch }` ([`triad-example.md`](triad-example.md) §5); the exact fields are the screen's to define (add `loadMore`/`hasMore` for pagination, drop `isRefreshing` if there's no pull-to-refresh) |
+| **Server state / data fetching** | TanStack Query (formerly React Query) · SWR · RTK Query · hand-rolled hooks · none (call services directly from the VM) | `queries/` + `mutations/` | a feature-defined neutral shape — the **canonical** one is `useProductsData`'s `{ items, isLoading, isRefreshing, error, refetch }` ([`triad-example.md`](triad-example.md) [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it)); the exact fields are the screen's to define (add `loadMore`/`hasMore` for pagination, drop `isRefreshing` if there's no pull-to-refresh) |
 | **HTTP client** | fetch · axios · ky | `services/` + a `client` factory | typed data + domain errors — never the HTTP type |
 | **Client state** | Zustand · Redux Toolkit · MobX · Jotai (Recoil — unmaintained, see below) · Context | `stores/` (or observables, in MobX), accessed via the lib's granularity (selector / `observer` / atom) | a slice/observable contract; teardown in a coordinator |
 | **Input/validation** | hand-rolled parsers · zod · yup | `parsers/` (input→value) | pure functions returning domain-ready values |
@@ -47,10 +47,10 @@ swappable.
   the VM depend on a **feature-defined neutral hook** — e.g. a paginated
   `useProductsData()` returning `{ items, isLoading, error, loadMore, hasMore }`
   (the canonical non-paginated shape is `{ items, isLoading, isRefreshing, error,
-  refetch }` — [`triad-example.md`](triad-example.md) §5; add/drop fields per the
+  refetch }` — [`triad-example.md`](triad-example.md) [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it); add/drop fields per the
   screen) — and let that hook wrap whichever library you chose. Then swapping the
   library is invisible to the VM. (The paginated end-to-end slice — neutral hook,
-  VM `ready` fields, the View's footer spinner — is [`triad-example.md`](triad-example.md) §18.)
+  VM `ready` fields, the View's footer spinner — is [`triad-advanced.md`](triad-advanced.md) [section 18](triad-advanced.md#18-pagination--load-more--infinite-scroll-end-to-end).)
   - **Suspense is an alternative *mechanism*, not a different contract.** With
     React 18 `Suspense` (TanStack Query's `useSuspenseQuery`, or `use(promise)`),
     the data hook **suspends** instead of returning `{ isLoading }`, and an error
@@ -134,7 +134,7 @@ export function useIsAuthenticated(): boolean {
 
 The same rule applies — confine the library to one layer behind a neutral contract.
 **Several are now worked end-to-end in [`integration-recipes.md`](integration-recipes.md)**
-(GraphQL §4, real-time §2, offline-first/sync §3, deep linking §5, security §6); the rest
+(GraphQL section 4, real-time section 2, offline-first/sync section 3, deep linking section 5, security section 6); the rest
 plug in as below:
 
 - **GraphQL** (Apollo · urql · Relay) — the client fuses HTTP **and** the
@@ -151,7 +151,8 @@ plug in as below:
   the same domain types. Sync/conflict logic never reaches a View or VM.
 - **Deep linking & typed route params** — owned by the **navigation facade**;
   validate inbound params with a `parser` at the boundary before the VM trusts them.
-- **Security** (token lifecycle, refresh, cert pinning, PII) — token logic lives
+- **Security** (token lifecycle, refresh, cert pinning, PII — Personally Identifiable
+  Information) — token logic lives
   behind the auth service / the `AuthBridge` port; secrets in secure storage; never
   log PII (a rule for the observability reporter).
 - **Side-effect orchestration** (redux-saga · redux-observable/epics) — these *are*

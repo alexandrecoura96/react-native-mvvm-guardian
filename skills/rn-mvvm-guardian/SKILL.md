@@ -7,15 +7,21 @@ description: Use when building, reviewing, or scaling any React Native app with 
 
 Keep a React Native app faithful to MVVM, SOLID, best practices, and conventions —
 and scale it only when the pain is real, climbing one deliberate rung at a time.
+(**MVVM** = Model–View–ViewModel; **SOLID** = the five design principles Single
+Responsibility, Open–Closed, Liskov Substitution, Interface Segregation, and
+Dependency Inversion — all defined in the
+[`conventions.md`](references/conventions.md#glossary) glossary and worked example
+by example in [`mvvm-and-scaling.md`](references/mvvm-and-scaling.md#solid--the-five-principles-in-plain-terms-and-in-mvvm).)
 **This skill mandates no stack and no structure.** It teaches the MVVM *boundaries*;
 you choose the libraries that plug into them (navigation, server state, HTTP, client
 state) and the structure that fits the app (screen-based → feature-based → modular
 monolith → micro-frontend), and the skill keeps those choices from leaking across
 the boundaries.
 
-The cheatsheet (a one-screen index) plus **six deep references** (suggested reading
+The cheatsheet (a one-screen index) plus **eight deep references** (suggested reading
 order: **skim `cheatsheet.md`** for the 60-second orientation, then **`mvvm-and-scaling.md`**
-for the contract and `triad-example.md` to see it in code; reach for `conventions.md`,
+for the contract and `triad-example.md` to see it in code; reach for `triad-advanced.md`,
+`triad-crosscutting.md`, `conventions.md`,
 `stack-choices.md`, `worked-examples.md`, and `integration-recipes.md` as the task needs them):
 - [`references/cheatsheet.md`](references/cheatsheet.md) — the one-screen digest: the
   triad table, where-does-X-go, the red flags, the ladder, the gates, and naming — each
@@ -23,14 +29,19 @@ for the contract and `triad-example.md` to see it in code; reach for `convention
 - [`references/mvvm-and-scaling.md`](references/mvvm-and-scaling.md) — the layer
   contract, conformance checklist, and the scaling ladder + migration playbooks.
 - [`references/triad-example.md`](references/triad-example.md) — the triad in
-  **code**: starts with a ~40-line **quickstart** (§0) — the smallest faithful slice
-  — then the full Model→Service→transformer→formatter→neutral-hook→ViewModel→View→Screen
-  slice, the VM contract as a discriminated union, controlled inputs, and the tests.
-  Later sections work the harder cases: the no-server-state-lib path, OCP via a
-  registry, typed route params, **mutations** (optimistic update + rollback), an error
-  boundary, **the same triad on MobX / RTK Query / Redux** (the universality claim
-  in code), pagination, and the cross-cutting slices — **i18n, accessibility,
-  animations, and Suspense** (§19–§22) — each kept on the right side of the boundary.
+  **code**, the **core slice** (sections 0–9): starts with a ~40-line **quickstart**
+  (section 0) — the smallest faithful slice — then the full
+  Model→Service→transformer→formatter→neutral-hook→ViewModel→View→Screen slice, the VM
+  contract as a discriminated union, controlled inputs, and the tests.
+- [`references/triad-advanced.md`](references/triad-advanced.md) — the **harder cases**
+  (sections 10–18): controlled inputs/forms, the Open–Closed Principle (OCP) via a
+  registry, the no-server-state-lib path, the god-component refactor, typed route params,
+  **mutations** (optimistic update + rollback), an error boundary, **the same triad on
+  MobX / RTK Query / Redux** (the universality claim in code), and pagination.
+- [`references/triad-crosscutting.md`](references/triad-crosscutting.md) — the
+  **cross-cutting slices** (sections 19–23): **i18n, accessibility, animations, and
+  Suspense** — each kept on the right side of the boundary — plus a closing
+  **referenced-helpers appendix** listing every assumed primitive.
 - [`references/conventions.md`](references/conventions.md) — the glossary, naming
   rules, canonical folder trees, how to model VM state, the **adoption ladder**
   (build the fewest layers you need), and what this material does not yet cover.
@@ -41,7 +52,7 @@ for the contract and `triad-example.md` to see it in code; reach for `convention
   copy-pasteable instantiation (Expo + expo-router + TanStack Query + Zustand +
   axios): conformance greps, the feature-boundary ESLint recipe, the `AuthBridge`
   dependency inversion, server-state/client-state specifics, and a worked
-  screen→feature migration — **plus §10, the same recipes on a contrasting stack**
+  screen→feature migration — **plus section 10, the same recipes on a contrasting stack**
   (bare RN + React Navigation + Redux Toolkit + fetch), changing imports only. Keep
   the pattern, swap the specifics for your libs.
 - [`references/integration-recipes.md`](references/integration-recipes.md) — the
@@ -63,11 +74,11 @@ for the contract and `triad-example.md` to see it in code; reach for `convention
 unidirectional props-down / callbacks-up, *not* the two-way data-binding MVVM of
 .NET/Android/SwiftUI. The contract takes a deliberately **strict, "passive View"
 stance** (closer to MVP's Passive View than textbook MVVM — see the note in
-[`references/mvvm-and-scaling.md`](references/mvvm-and-scaling.md) §1): all
+[`references/mvvm-and-scaling.md`](references/mvvm-and-scaling.md) [section 1](references/mvvm-and-scaling.md#1-layer-responsibilities-the-contract)): all
 formatting and decisions leave the View, so each layer has one reason to change and
 is testable in isolation. That discipline **earns its keep on apps that will grow,
 be maintained by more than one person, or live for years.** On a throwaway prototype
-or a two-screen app it can be overhead — start at the [§0 quickstart](references/triad-example.md)
+or a two-screen app it can be overhead — start at the [section 0 quickstart](references/triad-example.md#0-quickstart--the-smallest-faithful-slice-rung-1-40-lines)
 (Model + View + ViewModel + Screen, one service, one formatter) and add layers only
 when a *distinct reason to change* appears (the **adoption ladder** in
 [`references/conventions.md`](references/conventions.md)). The skill flags
@@ -91,7 +102,7 @@ If you read nothing else, internalize these — every reference just expands one
 5. **Build the fewest layers that earn their keep, scale only when the pain is real.**
    A missing layer is not a defect; over-building is flagged as readily as under-structuring.
 
-The fastest concrete start is the **~40-line §0 quickstart** in
+The fastest concrete start is the **~40-line section 0 quickstart** in
 [`references/triad-example.md`](references/triad-example.md) — copy it, then add layers
 only when a distinct reason to change appears. Reach for the deep references on demand;
 nothing below is required reading before you write your first triad.
@@ -108,22 +119,22 @@ reference that details it — nothing here is duplicated, only sequenced.
    screen-based tree (`screens/`, `models/`, `services/`, `shared/`, and the mapping
    folders you actually need). Canonical trees: [`references/conventions.md`](references/conventions.md).
 3. **Write your first triad from the quickstart** — Model + View + ViewModel + Screen,
-   one service, one formatter. Copy [§0 of `triad-example.md`](references/triad-example.md)
+   one service, one formatter. Copy [section 0 of `triad-example.md`](references/triad-example.md#0-quickstart--the-smallest-faithful-slice-rung-1-40-lines)
    and adapt the imports to your libraries.
 4. **Keep each library behind its layer** as you add navigation, server state, HTTP,
    and client state — pick from the menu in [`references/stack-choices.md`](references/stack-choices.md)
    and confirm consumers depend on the *layer's contract*, not the lib.
 5. **Wire the gates into CI + pre-commit** — `tsc --noEmit` = 0, lint = 0, tests green.
-   The minimal CI job is in [`mvvm-and-scaling.md`](references/mvvm-and-scaling.md) §7.
+   The minimal CI job is in [`mvvm-and-scaling.md`](references/mvvm-and-scaling.md) [section 7](references/mvvm-and-scaling.md#7-keeping-it-faithful-over-time-governance).
 6. **Add layers and climb rungs only when a distinct reason to change appears** — the
    adoption ladder ([`references/conventions.md`](references/conventions.md)) and the
-   scaling decision tree ([`mvvm-and-scaling.md`](references/mvvm-and-scaling.md) §3).
+   scaling decision tree ([`mvvm-and-scaling.md`](references/mvvm-and-scaling.md) [section 3](references/mvvm-and-scaling.md#3-the-scaling-ladder)).
    When you reach feature-based, add the boundary-enforcing ESLint rules from
-   [`worked-examples.md`](references/worked-examples.md) §2.
+   [`worked-examples.md`](references/worked-examples.md) [section 2](references/worked-examples.md#2-feature-boundary-lint-recipe-eslint-flat-config-no-extra-plugins).
 
 Want a concrete, copy-pasteable instance of every recipe on one stack (Expo +
 expo-router + TanStack Query + Zustand + axios)? See
-[`references/worked-examples.md`](references/worked-examples.md) — and §10 for the
+[`references/worked-examples.md`](references/worked-examples.md) — and [section 10](references/worked-examples.md#10-the-same-recipes-on-a-contrasting-stack-bare-rn--react-navigation--redux-toolkit--fetch) for the
 same recipes on a contrasting stack (bare RN + React Navigation + Redux Toolkit + fetch).
 
 ## Activation flow
@@ -259,7 +270,8 @@ instance:
 - A library's **result shape leaking into a ViewModel** (e.g. TanStack Query's
   `hasNextPage`/`isFetchingNextPage`) instead of a feature-defined neutral shape —
   add the neutral adapter (see `stack-choices.md`).
-- **Subscribing to more state than needed** (ISP). Each lib expresses this
+- **Subscribing to more state than needed** (ISP — the Interface Segregation
+  Principle; depend on no more than you use). Each lib expresses this
   differently: a selector in Zustand/Redux (`useStore((s) => s.slice)`),
   `observer` + granular access in MobX, a specific atom in Jotai/Recoil. The red
   flag is subscribing to the whole store (`useStore()`) when the lib offers finer
@@ -301,7 +313,7 @@ modules behind a `services/` device adapter; worklets/animations in a UI hook or
 View; never the VM).
 
 Read the references the task needs before producing findings or a plan — skim the
-cheatsheet first, then **all six deep references for a full conformance audit or a
+cheatsheet first, then **all the deep references for a full conformance audit or a
 migration** (where every layer, the stack-choice advice, and the scaling playbooks are
 in scope). For a narrow question (e.g. "where does a formatter go?"), the relevant
 reference is enough.
