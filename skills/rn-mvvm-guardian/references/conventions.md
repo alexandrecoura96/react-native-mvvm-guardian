@@ -55,6 +55,16 @@ this material does **not** yet prescribe in depth. Pairs with
   `utils.ts` grab-bag), or in `shared/formatters`/`shared/parsers` when it's specifically a
   pure formatter/parser primitive. If it **fails** the test, it is not a util — it's a
   named layer mislabeled.
+- **No reflexive `types.ts`** — a `types.ts` that gathers a feature's *unrelated* types is
+  the `utils.ts` grab-bag in another guise (several reasons to change in one file — an SRP
+  smell). **Keep a type next to the code that owns it:** view-item types co-locate with
+  their producing `to*` formatter, a DTO co-locates with its transformer, and the
+  `<Screen>VM` contract may co-locate in the hook file at Rung 1. Extract a type to a
+  **dedicated file only when** it is shared by **multiple files of the feature** (e.g. the
+  neutral data shape once a second `queries/` implementation imports it — the
+  `queries/types.ts` case in [`triad-example.md`](triad-example.md) [section 5](triad-example.md#5-neutral-feature-hook--wraps-the-server-state-lib-so-the-vm-never-sees-it)) **or** when its
+  types begin to *dominate* the file that holds them. The trigger is real sharing or real
+  size — never "new file → add a `types.ts`".
 - **`shared/utils/` vs a feature's `helpers/`** — the copy-paste test also decides *where*
   a util-shaped helper lives. **Passes → `shared/utils/`** (portable to any project means
   portable to any feature; a single consumer today is fine — cost is zero and the next
@@ -126,6 +136,15 @@ this material does **not** yet prescribe in depth. Pairs with
 > `type`-only (erased at compile time) there's no runtime coupling either way —
 > split it into its own file once the feature grows.
 
+> **The `use` prefix means "this is a React hook" — and nothing else.** Every **hook**
+> file carries it (`use<Screen>ViewModel`, `use<Thing>Data`, `use<Behavior>`), following
+> the React ecosystem convention so the file's nature is legible at a glance. A
+> **contract, type, or interface is not a hook**, so it **never** takes `use`: the VM
+> contract is `<Screen>VM` (`ProductsVM`), not `useProductsVM`; view-item types
+> (`ProductItem`), DTOs (`ProductDTO`), and the neutral data shape (`ProductsData`)
+> stay prefix-free. The two halves of the table above are this one rule: `use*` = a
+> hook you call; everything else = a value/shape you import.
+
 ## Who consumes which hook
 
 The three hook kinds have distinct consumers — keep them straight:
@@ -145,6 +164,26 @@ ViewModel. Keeping pure-presentation state out of the contract (so `<Screen>VM` 
 no `opacity`/`isKeyboardOpen`/`scrollY`) is a **consequence** of that rule, never the
 reason to apply it — pushing legitimate screen state out of the VM just to shrink the
 contract is the opposite mistake.
+
+## View composition — orchestrate, extract by cohesion
+
+The View is the screen's **composition orchestrator**: it lays out the screen and
+delegates, rather than concentrating every visual block, render branch, and piece of
+composition logic in one file. An **independent visual block** — one with its **own
+behavior**, or a **clearly separate visual/behavioral responsibility** — is extracted
+into a feature **`components/`** component and the View composes it (the canonical
+example is `ProductRow` in [`triad-example.md`](triad-example.md) [section 7](triad-example.md#7-view--passive-only-branches-on-status-formats-nothing); the placement
+tiers are in [`worked-examples.md`](worked-examples.md) [section 6](worked-examples.md#6-component--hook-tiers-feature-based)).
+
+The extraction criterion is **cohesion and responsibility, not line count**. A block
+earns its own file when it is a coherent unit you could name and reason about on its own
+— *not* merely because the View grew long. The balance cuts both ways, exactly like rule
+5: a View that concentrates many unrelated blocks is under-structured, but splitting one
+cohesive screen into a scatter of tiny components nobody reuses is **premature
+abstraction** — flagged as readily as the oversized View. Extracted components stay
+**passive** (props-in / JSX-out, like the presentational components in
+[`triad-crosscutting.md`](triad-crosscutting.md) [section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here)); a block that needs data,
+a business decision, or "what to show" is the **ViewModel's** job, not a component's.
 
 ## Canonical folder trees
 
@@ -250,6 +289,15 @@ OTA (Over-The-Air) updates and federated remotes are two update channels that mu
 Prefer a **discriminated union** keyed on `status` so illegal states can't be
 represented (see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)). Extend the variants as
 the screen needs:
+
+> **The contract carries render-ready data + UI actions only.** Each variant exposes
+> *display-ready* values (already-formatted view-items, ready strings) and the
+> interface's actions (handlers). It must **not** expose domain entities, DTOs/API
+> models, or internal structures (a raw `Product`, a `ProductDTO`, a query object) — the
+> formatter turns the domain into a view-item *before* it enters the contract (the
+> `ready` variant carries `ProductItem[]`, never `Product[]`). A domain or wire shape
+> reaching the View is a leaked responsibility, the contract-side mirror of the View
+> formatting things itself.
 
 | Variant | Carries | When |
 |---|---|---|

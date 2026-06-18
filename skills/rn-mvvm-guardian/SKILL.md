@@ -258,6 +258,15 @@ instance:
 - A **View** formatting (`.toFixed`, date formatting, display-string templating
   like `` `@${user}` ``) or deciding error/empty/loading itself — move formatting
   to a `formatter`, expose a discriminated `status` from the ViewModel.
+- A **View concentrating many independent visual blocks** (multiple cohesive UI
+  sections, their inline render states, and composition logic) in one file — extract
+  each cohesive block to a `components/` component and let the View **orchestrate** the
+  composition. The criterion is cohesion/responsibility, not line count (and don't
+  over-fragment one cohesive screen into throwaway components either).
+- A **domain entity, DTO, or internal structure reaching the View** (a raw `Product`,
+  a `ProductDTO`, or a query object on the VM contract instead of a formatted
+  view-item) — the VM contract must expose **render-ready data + UI actions only**; run
+  it through a `formatter` first.
 - A **ViewModel** importing the rendering framework (`react-native`) or rendering
   JSX, or touching the router directly (e.g. expo-router's `router`, React
   Navigation's `navigation`) — move rendering to the View, navigation behind the

@@ -23,7 +23,7 @@ principles here are shared across every stack.
 | **Persistence** | a durable-storage adapter — secrets in secure store, prefs in fast KV; sits behind a store or backs the query cache | be imported by a VM/View; leak the storage API upward |
 | **Coordinator** | orchestrate actions that span concerns (e.g. logout = clear store + invalidate server-cache + navigate); holds no state of its own | hold UI state; format; be imported by a View |
 | **ViewModel** | screen state + behavior + "what to show" (ready strings/booleans + a **discriminated-union** `status`; see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)) | import UI/render JSX; touch HTTP/router directly; format inline |
-| **View** | render the branch the VM resolved; forward events | format (`toFixed`/dates/templating); decide error/empty/loading; call service/store/query/navigation |
+| **View** | render the branch the VM resolved; forward events; **orchestrate composition** — extract cohesive independent blocks to `components/` | format (`toFixed`/dates/templating); decide error/empty/loading; call service/store/query/navigation; concentrate many independent blocks in one file |
 | **Screen** | wiring: build the ViewModel, pass its output into the View as props | hold state, JSX layout, styles, or logic |
 
 > The one rule everything follows: **each piece of code has exactly one reason
@@ -350,6 +350,8 @@ language/framework.
 - [ ] Each ViewModel imports no `react-native` and renders no JSX (importing `react` itself — `useState`/`useMemo`/etc. — is fine) and exposes an explicit interface/contract — **preferably a discriminated-union `status`** (see [`triad-example.md`](triad-example.md) [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)) with ready values (formatted strings, booleans for visibility) inside each variant; flat flags (`error: string|null`) only for trivial cases (simple forms, triad [section 10](triad-advanced.md#10-controlled-inputs-forms--the-view-stays-dumb)).
 - [ ] Each View formats nothing (`toFixed`, date formatting, display-string templating) and decides no error/empty/loading state — the VM exposes a discriminated `status`/booleans and the View only branches on it (a `switch`/early-return), never computing the condition itself. A `status` `switch` ends on `default: assertNever(vm)` so a new variant fails to compile and never renders `undefined` at runtime (see [`triad-example.md`](triad-example.md) [section 7](triad-example.md#7-view--passive-only-branches-on-status-formats-nothing)).
 - [ ] Views don't import services/queries/stores/navigation directly.
+- [ ] The View **orchestrates composition** — cohesive independent visual blocks (own behavior / separate responsibility) are extracted to `components/`, not concentrated in one file. The criterion is cohesion/responsibility, not line count; over-fragmenting one cohesive screen into throwaway components is flagged just as readily (see [`conventions.md`](conventions.md#view-composition--orchestrate-extract-by-cohesion)).
+- [ ] The VM contract exposes **render-ready data + UI actions only** — no domain entity, DTO/API model, or internal structure reaches the View (the `ready` variant carries view-items like `ProductItem[]`, never `Product[]`); a `formatter` turns domain → view-item before it enters the contract.
 
 **Mapping layers**
 - [ ] Wire→domain mapping is pure, isolated, named consistently; derived values are domain rules in the model, not the mapper.

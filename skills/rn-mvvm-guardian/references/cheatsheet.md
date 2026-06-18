@@ -40,6 +40,7 @@ imported `type`-only by both). External libraries sit at the edges, behind abstr
 |---|---|
 | A new screen | a Screen + View + ViewModel triad |
 | Layout / styling / a11y (accessibility) metadata | the **View** |
+| An independent visual block (own behavior / separate responsibility) | a **component** in `components/`; the **View orchestrates** the composition (conventions [View composition](conventions.md#view-composition--orchestrate-extract-by-cohesion)) |
 | Screen state / a handler / "what to show" | the **ViewModel** |
 | API response → domain | a **transformer** (`transform*`) |
 | Domain → display string | a **formatter** (`to*`) |
@@ -65,6 +66,8 @@ If a change doesn't fit one row, it's two changes in two layers — split it.
 ## Red flags (stack-neutral — the lib in parens is just one instance)
 
 - View **formatting** (`.toFixed`, dates, `` `@${u}` ``) or **deciding** error/empty/loading → move to a formatter / a discriminated `status`.
+- View **concentrating many independent visual blocks** / inline render states in one file → extract cohesive blocks to `components/`, let the View orchestrate (by cohesion, not line count).
+- A **domain entity / DTO / internal structure reaching the View** (a raw `Product`/`ProductDTO` in the contract) → expose render-ready view-items + actions only.
 - ViewModel importing **`react-native`** / rendering JSX, or touching the **router** directly → rendering to the View, navigation behind the facade.
 - **HTTP client** (`axios`/`fetch`/`ky`) outside `services/` → confine transport.
 - **Native API** (`expo-camera`, `expo-location`) outside its adapter → confine like HTTP.
@@ -125,6 +128,10 @@ A boundary the tooling enforces is the only one that survives turnover (mvvm-and
 (input→value) · `validate*` (input→fault) · `use<Thing>Data` (neutral data hook, in
 `queries/`) · `use<Behavior>` (UI hook, holds no data) · folders plural/lowercase ·
 co-located `*.test.ts(x)`. Full table: conventions.md.
+
+`use*` means **hook** and nothing else — contracts/types/interfaces (`<Screen>VM`,
+`ProductItem`, DTOs) never take it. No reflexive `types.ts`: co-locate a type with its
+owner, extract only when shared across files or it dominates the file.
 
 ---
 
