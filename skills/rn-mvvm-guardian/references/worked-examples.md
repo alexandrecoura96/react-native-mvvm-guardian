@@ -133,7 +133,7 @@ themselves or to a shell route.
 ## 6. Component & hook tiers (feature-based)
 - **Components:** screen-local (`screens/<S>/components/`) → feature-level (`features/<f>/components/`, 2+ screens or public) → shared (`shared/components/`, 2+ features).
 - **Hooks:** the **ViewModel is a hook** (`use<Screen>ViewModel`); *reusable* hooks live feature-level (`features/<f>/hooks/`, even if one screen uses it — a hook is feature logic) → shared (`shared/hooks/`, when a 2nd feature consumes it). Asymmetry: presentational components may be screen-local; reusable logic lives at feature level.
-- **UI hooks hold no data** (state/dimensions/scroll/animation/focus) — data orchestration stays in the ViewModel/queries. Typical patterns: a password-visibility toggle, a quantity stepper (paired with `parseQuantity`), a responsive-columns hook, an avatar image→initials fallback, an expandable "read-more" text hook.
+- **UI hooks hold no data** (state/dimensions/scroll/animation/focus) — data orchestration stays in the ViewModel/queries. A pure UI hook is the one kind of hook the **View consumes directly** (the VM never mediates it; see [`triad-example.md`](triad-example.md) §21). Typical patterns: a password-visibility toggle, a quantity stepper (paired with `parseQuantity`), a responsive-columns hook, an avatar image→initials fallback, an expandable "read-more" text hook.
 - **Layers are optional:** a feature has only the folders it needs. A *capability feature* (e.g. `comments`) has no `screens/`/`navigation`; a *thin feature* (e.g. `profile`) has no `services/`/`queries/`/`models/`. A missing folder is not a defect — don't flag it against a fixed template.
 
 ---

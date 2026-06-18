@@ -121,6 +121,13 @@ responsibility, not a fixed template:
   *components* tied to one screen may be screen-local.
 - **UI hooks** (toggle/disclosure, keyboard, scroll, animation, expandable text,
   steppers…) hold **no data** — data orchestration stays in the ViewModel/queries.
+  A **pure UI hook** is the one kind of hook the **View may consume directly**: the
+  ViewModel does not mediate it (see [`triad-example.md`](triad-example.md) §21 for the
+  canonical case). This also keeps the `<Screen>VM` contract free of pure-presentation
+  state (`opacity`, `isKeyboardOpen`, `scrollY`, `isExpanded`) — but that is a
+  *consequence*, not the criterion: the test is **presentation-vs-data**, never contract
+  size. If the hook touches data, a business decision, or "what to show", it belongs in
+  the ViewModel.
 - **The neutral *data* hook is different from a UI/reusable hook.** A hook that
   wraps the server-state lib (`use<Thing>Data`) *is* the server-state boundary and
   lives in **`queries/`**, not `hooks/`. `hooks/` is for the data-free UI hooks

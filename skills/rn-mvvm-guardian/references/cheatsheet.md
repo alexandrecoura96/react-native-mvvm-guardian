@@ -21,7 +21,7 @@ the *why*.
 | **Persistence** | durable-storage adapter (secure store / KV) | be imported by a VM/View | conventions glossary |
 | **Coordinator** | one cross-concern action (logout = clear state + cache + navigate) | hold state; format; be imported by a View | worked §8c |
 | **ViewModel** | screen state + behavior + "what to show" (a discriminated `status`) | import `react-native`/JSX; touch HTTP/router; format inline | triad §6 |
-| **View** | render the branch the VM resolved; forward events | format; decide loading/error/empty; call service/store/query/nav | triad §7 |
+| **View** | render the branch the VM resolved; forward events; may consume a **pure UI hook** (`use<Behavior>`, holds no data) directly | format; decide loading/error/empty; call service/store/query/nav | triad §7, §21 |
 | **Screen** | wiring: build the VM, pass its output into the View as props | hold state / JSX / styles / logic | triad §8 |
 
 **Data flows VM → (props) → View; events flow View → (callbacks) → VM.** The View's
@@ -49,6 +49,7 @@ imported `type`-only by both). External libraries sit at the edges, behind abstr
 | Global client state | a **store** (cross-concern teardown → a **coordinator**) |
 | A navigation target | the **navigation facade** (shell) or feature `navigation.ts` (deep route) |
 | Domain computation (totals, eligibility) | a **use-case** in the model — the VM *calls* it |
+| View-local presentation behavior (animation, gesture, keyboard, scroll, toggle, dimensions) | a **UI hook** (`use<Behavior>`, holds no data) the **View consumes directly** — not the ViewModel (triad §21) |
 | User-facing text / route strings | centralized constants / i18n |
 
 If a change doesn't fit one row, it's two changes in two layers — split it.

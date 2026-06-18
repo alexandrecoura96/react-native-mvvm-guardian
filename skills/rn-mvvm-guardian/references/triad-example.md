@@ -439,6 +439,14 @@ export const ProductRow = memo(function ProductRow({ item }: { item: ProductItem
 > (`accessibilityLabel`/`accessibilityHint`): it is user-facing text too, so a
 > localized app sources it the same way — not as an inline literal.
 
+> **The one hook the View may consume directly.** "No service/store/query/navigation
+> import" still holds — but a **pure UI hook** (`use<Behavior>`, holds no data:
+> animation, gesture, keyboard, scroll/focus, a visibility toggle) is presentation, so
+> the View consumes it directly and the ViewModel never mediates it. §21 shows the
+> canonical case (an animation hook the View owns). The criterion is the hook's
+> *nature* (presentation, not data) — keeping such state off the `<Screen>VM` contract
+> is a consequence of that, not a reason to move screen state out of the VM.
+
 ## 8. Screen — the per-screen composition root
 
 ```tsx

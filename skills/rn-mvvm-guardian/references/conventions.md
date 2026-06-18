@@ -94,6 +94,26 @@ this material does **not** yet prescribe in depth. Pairs with
 > `type`-only (erased at compile time) there's no runtime coupling either way —
 > split it into its own file once the feature grows.
 
+## Who consumes which hook
+
+The three hook kinds have distinct consumers — keep them straight:
+
+| Hook kind | Naming | Consumed by | Holds |
+|---|---|---|---|
+| **ViewModel hook** | `use<Screen>ViewModel` | the **Screen** (composition root) only | screen state + behavior |
+| **Neutral data hook** | `use<Thing>Data` (in `queries/`) | the **ViewModel** only | server state (behind a neutral shape) |
+| **UI hook** | `use<Behavior>` (in `hooks/`) | the **View** directly | no data — presentation/interaction only |
+
+A **pure UI hook is the one hook a View may consume directly** — animation, gesture,
+keyboard, scroll/focus, visibility toggle, disclosure, responsive dimensions,
+"read-more". The ViewModel does not mediate it (canonical case:
+[`triad-example.md`](triad-example.md) §21). The decision rule is the hook's **nature**,
+not its size: if it touches data, a business decision, or "what to show", it goes in the
+ViewModel. Keeping pure-presentation state out of the contract (so `<Screen>VM` carries
+no `opacity`/`isKeyboardOpen`/`scrollY`) is a **consequence** of that rule, never the
+reason to apply it — pushing legitimate screen state out of the VM just to shrink the
+contract is the opposite mistake.
+
 ## Canonical folder trees
 
 A feature/app has **only the folders it needs** — a missing one is not a defect.
