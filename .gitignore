@@ -2,3 +2,7 @@ node_modules/
 .DS_Store
 docs/
 .claude/
+
+# Local-only doc tooling — kept on disk to run locally, not published to the repo
+scripts/check-doc-links.py
+.github/workflows/docs-links.yml
