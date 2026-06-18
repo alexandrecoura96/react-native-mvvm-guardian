@@ -74,16 +74,34 @@ this material does **not** yet prescribe in depth. Pairs with
   `internal/`, `utils/`, or `lib/`, whose reserved meanings elsewhere only reintroduce the
   decision we're removing). `helpers/` is an explicit marker of *local implementation
   detail*: it must not be imported by other features (it is not part of the feature's public
-  API). **Mandatory promotion rule:** the moment a helper acquires a reason to change of its
-  own — domain knowledge, business rules, API transformation, UI formatting, or any other
-  identifiable architectural responsibility — move it immediately to the named layer that
-  owns that reason. `helpers/` must never become a generic convenience layer (that is the
-  `utils/`-grab-bag smell under a new name).
+  API). **Promotion rule — review-triggered, not refactor-on-touch.** Promote a helper to a
+  named layer when the pain is real: it gains a *second consumer*, its reason-to-change maps
+  onto a layer that already exists (domain knowledge → a model use-case; wire↔domain → a
+  `transformer`; UI formatting → a `formatter`), or it has simply grown past trivial size.
+  You need *not* refactor on first touch — demanding an immediate move the moment a helper
+  "could" belong elsewhere fights the same "scale only when the pain is real" ethos the rest
+  of this contract follows, and churns diffs for no behavior change. Two guarantees stay
+  hard, though: `helpers/` is **private to its feature** (never imported across features),
+  and it must **never become a generic convenience layer** (that is the `utils/`-grab-bag
+  smell under a new name).
 - **No `presenters/`** — the "presenter" role of classic MV\* is already split, with a
   clear owner each: domain→view-item is the **formatter** (`to*`), and *"what to show"*
   (the discriminated `status` + ready values) is the **ViewModel**. A `presenters/`
   folder would duplicate that ownership — the ambiguity the one-reason-to-change rule
   exists to prevent.
+- **Where a cross-feature domain type lives** — a domain **entity** (`User`, `Order`,
+  `Money`) is **owned by the feature whose responsibility it is** and exposed through that
+  feature's public API; another feature that needs it imports the *type* from that public
+  surface — a thin, compile-time-only, acyclic dependency — **never** a duplicated copy
+  that can drift. Reserve `shared/models/` strictly for *foundational, feature-agnostic*
+  domain **primitives** (`Money`, an `Id` brand, a timestamp) that pass the domain-level
+  copy-paste test: meaningful with zero knowledge of any one feature. A feature *entity*
+  parked in `shared/models/` is the centralization smell — it makes every feature depend
+  on a god-model. **Transformers follow the same ownership:** the wire DTO and its
+  `transform*` belong to the feature that owns the endpoint, so there is **no
+  `shared/transformers/`** — a shared wire shape flows through its owning feature's public
+  API. (This is why the second mapping tier promotes only reusable `shared/formatters`/
+  `shared/parsers` *primitives*, never transformers.)
 - **Capability feature** — a feature with no screen; exposes a component/hook other
   features compose (e.g. a comments list).
 - **Thin feature** — a feature with no data layer of its own; reads another
@@ -111,9 +129,11 @@ this material does **not** yet prescribe in depth. Pairs with
 | Thing | Convention | Example |
 |---|---|---|
 | ViewModel hook | `use<Screen>ViewModel` | `useProductsViewModel` |
+| Section ViewModel hook (composed by the screen VM) | `use<Section>ViewModel` | `useFiltersViewModel` |
 | ViewModel contract type | `<Screen>VM` | `ProductsVM` |
 | View component / file | `<Screen>View` / `*View.tsx` | `ProductsView` |
 | Screen component / file | `<Screen>Screen` / `*Screen.tsx` | `ProductsScreen` |
+| Extracted View component / file | `<Name>` / `*.tsx` (PascalCase, **no** `use` prefix) | `ProductRow` |
 | Transformer | `transform*` | `transformProduct` |
 | Formatter | `to*` (`to*Message` for errors) | `toProductItem`, `toErrorMessage` |
 | Parser | `parse*` | `parseQuantity` |
@@ -184,6 +204,17 @@ abstraction** — flagged as readily as the oversized View. Extracted components
 **passive** (props-in / JSX-out, like the presentational components in
 [`triad-crosscutting.md`](triad-crosscutting.md) [section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here)); a block that needs data,
 a business decision, or "what to show" is the **ViewModel's** job, not a component's.
+Extracted components are named for what they are (`PascalCase`, file = component name)
+and carry **no `use` prefix** — they are components, not hooks.
+
+**The mirror on the ViewModel side.** When an extracted block needs its *own* state and
+behavior — not just props the screen's ViewModel already holds — it is no longer a
+passive component: it becomes its own small triad, applied recursively (a
+`use<Section>ViewModel` the screen composes, or a nested View+VM the parent View
+embeds). Same cohesion criterion, same premature-abstraction guard — worked in
+[`mvvm-and-scaling.md`](mvvm-and-scaling.md#behavior-that-spans-the-triad). This keeps one
+screen's ViewModel from becoming a god-hook, exactly as this section keeps its View from
+becoming a god-file.
 
 ## Canonical folder trees
 
@@ -240,9 +271,23 @@ src/
       index.ts              # PUBLIC API — the only cross-feature entry point
   shared/                   # cross-cutting; MUST NOT import a feature
     api/ components/ config/ constants/ coordinators/ errors.ts formatters/
-    hooks/ i18n/ navigation/ parsers/ persistence/ stores/ theme/ test-utils/
+    hooks/ i18n/ models/ navigation/ parsers/ persistence/ stores/ theme/ test-utils/
+                            #   models/ → foundational, feature-AGNOSTIC domain primitives ONLY
+                            #   (Money, an Id brand, a timestamp). A feature entity (User,
+                            #   Order) belongs to its feature, exposed via its public API.
     assertNever.ts          # + small reusable primitives (the exhaustiveness guard, etc.)
 ```
+
+> **When one feature grows large — subdivide before you package.** A package (Rung 3a)
+> buys *build/ownership* isolation; it is **not** the answer to a feature that is merely
+> *big*. When a single feature's `views/`/`viewmodels/`/`screens/` get crowded, apply the
+> same "group by cohesion until by-type earns it" rule *recursively*: group the feature
+> internally by **sub-area** (`features/checkout/cart/…`, `features/checkout/payment/…`)
+> or keep **co-located screen folders** inside the feature (the Rung-1 grouping, retained)
+> instead of three parallel by-type folders of N files each. This is **permission, not
+> prescription** — the by-type split above stays the default; reach for sub-areas only
+> when the flat feature actually hurts to navigate (the same "pain is real" trigger as
+> every other rung climb).
 
 ### Modular monolith (Rung 3a)
 Features become **packages** in a workspace; the triad inside each is identical —

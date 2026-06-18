@@ -172,7 +172,10 @@ in [`worked-examples.md`](worked-examples.md) [section 9](worked-examples.md#9-t
 Features compose each other **only through public surfaces** (a feature's
 exported component/hook), never deep imports. A capability feature contributes a
 composable component/hook with no screen of its own. Keep the cross-feature graph
-**acyclic and directional**.
+**acyclic and directional**. A domain **type** shared across features is owned by one
+feature and imported from its public surface too (a compile-time-only dependency, no
+duplicated copy); only foundational, feature-agnostic domain primitives live in
+`shared/models/` — see [`conventions.md`](conventions.md#glossary).
 
 ### Behavior that spans the triad
 
@@ -203,6 +206,20 @@ composable component/hook with no screen of its own. Keep the cross-feature grap
   test: arithmetic/rules of the *domain* → model use-case (pure, unit-tested
   input→output); wiring those results into screen state → the VM. This keeps the VM
   a thin coordinator and the rules reusable and framework-free.
+- **Keep the ViewModel cohesive — decompose a multi-section screen into
+  sub-ViewModels.** The View-composition rule extracts cohesive *visual* blocks to
+  `components/`; its mirror on the state side keeps one screen's ViewModel from becoming
+  a god-hook. When a screen has **several independent, independently-stateful sections**
+  (a dashboard's widgets, a multi-section settings screen, a composed feed), don't funnel
+  all their state and behavior through one `use<Screen>ViewModel`. Give each cohesive
+  section **its own triad, applied recursively**: either a `use<Section>ViewModel` the
+  screen-level VM (or the Screen) composes, or — when the section is a self-contained
+  interactive unit — its own nested View+VM that the parent View embeds as a composition
+  root. The criterion is the View's: **cohesion/responsibility, not line count** — a
+  section earns its own VM when it is a unit you could name and reason about on its own;
+  over-splitting one cohesive screen into a scatter of tiny VMs is premature abstraction,
+  flagged just as readily. This is *not* a new layer — the triad doesn't change, it
+  nests.
 - **Cross-screen / cross-VM communication.** VMs never import each other. Share
   through the layer that owns the data: shared **client state** (a store slice) for
   app state, the **server-state cache** (an invalidated/refetched query) for server
@@ -381,6 +398,7 @@ language/framework.
 - [ ] Render-time failures are contained by an **error boundary** registered at the navigator/`app/` level (or a dedicated `shared/components` wrapper), with a typed fallback — not inline JSX in a Screen.
 - [ ] Co-located tests per layer; pure layers (transformers/formatters/parsers/rules) tested input→output; ViewModels tested via their contract; Views with a fake VM.
 - [ ] No `any`/dead code/leftover logs; strict typing on.
+- [ ] Performance is validated by **measurement, not assumption** — optimize a real, profiled bottleneck, not a hypothetical one. The hygiene items above (virtualized lists, sized/cached images, stable references) are the known RN hot spots; beyond them, avoid premature optimization until a profile shows the cost.
 
 > **Note — i18n and *pure* formatters.** A pure formatter can't read "the current
 > locale" reactively, so localization can't simply "live in a formatter" with no
