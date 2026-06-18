@@ -123,10 +123,12 @@ A boundary the tooling enforces is the only one that survives turnover (mvvm-and
 
 ## Naming (the prefix means exactly one thing on every rung)
 
-`use<Screen>ViewModel` · `<Screen>VM` (contract type, own file) · `<Screen>View` ·
+`use<Screen>ViewModel` · `use<Section>ViewModel` (sub-VM, composed by the screen VM) ·
+`<Screen>VM` (contract type, own file) · `<Screen>View` ·
 `<Screen>Screen` · `transform*` (wire↔domain) · `to*` (domain→view) · `parse*`
 (input→value) · `validate*` (input→fault) · `use<Thing>Data` (neutral data hook, in
-`queries/`) · `use<Behavior>` (UI hook, holds no data) · folders plural/lowercase ·
+`queries/`) · `use<Behavior>` (UI hook, holds no data) · `<Name>` (extracted component,
+PascalCase, no `use`) · folders plural/lowercase ·
 co-located `*.test.ts(x)`. Full table: conventions.md.
 
 `use*` means **hook** and nothing else — contracts/types/interfaces (`<Screen>VM`,
