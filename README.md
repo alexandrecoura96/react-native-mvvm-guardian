@@ -1,5 +1,7 @@
 # react-native-mvvm-guardian
 
+> MVVM Guardian for React Native, including the rules necessary to keep MVVM healthy as the application scales.
+
 A Claude Code **plugin** that keeps a **React Native** app faithful to **MVVM +
 SOLID + best practices + conventions**, helps you **choose your stack** without
 breaking the architecture, and — when the app outgrows its shape — knows **how to
