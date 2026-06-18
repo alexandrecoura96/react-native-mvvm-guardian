@@ -5,6 +5,22 @@
   "description": "Keep any React Native app faithful to MVVM + SOLID + best practices + conventions, and scale it up the ladder (screen-based → feature-based → modular monolith → micro-frontend). One pair (skill + agent): rn-mvvm-guardian — stack-agnostic and structure-agnostic (you choose navigation/server-state/HTTP/client-state libs), with a concrete Expo + expo-router + TanStack Query + Zustand + axios instantiation included as a copy-and-adapt worked example.",
   "author": { "name": "Alexandre Coura Limoeiro" },
   "homepage": "https://github.com/alexandrecoura96/react-native-mvvm-guardian",
-  "repository": { "type": "git", "url": "https://github.com/alexandrecoura96/react-native-mvvm-guardian.git" },
-  "keywords": ["mvvm", "solid", "architecture", "clean-code", "react-native", "expo", "mobile", "typescript", "scaling", "feature-based", "code-review", "audit", "zustand", "redux", "tanstack-query"]
+  "repository": "https://github.com/alexandrecoura96/react-native-mvvm-guardian.git",
+  "keywords": [
+    "mvvm",
+    "solid",
+    "architecture",
+    "clean-code",
+    "react-native",
+    "expo",
+    "mobile",
+    "typescript",
+    "scaling",
+    "feature-based",
+    "code-review",
+    "audit",
+    "zustand",
+    "redux",
+    "tanstack-query"
+  ]
 }
