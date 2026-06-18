@@ -42,15 +42,33 @@ this material does **not** yet prescribe in depth. Pairs with
 - **Mapper** — umbrella term for the three pure mapping layers: **transformer**
   (wire↔domain), **formatter** (domain→view), **parser** (input→value). *"Mapper"
   is never a folder* — the folders are `transformers/`, `formatters/`, `parsers/`.
-- **Non-folders (the catch-all smell)** — `utils/`, `helpers/`, `lib/`, `misc/`,
-  `mappers/`, and `presenters/` are **not layers in this contract** and should not be
-  folders: each hides *several* reasons to change, which is an SRP smell. Route their
-  contents to the layer that owns the reason — wire↔domain → `transformers/`;
-  domain→display → `formatters/`; input→value → `parsers/`; domain computation/rules →
-  a **model use-case**; a genuinely reusable *pure primitive* (`assertNever`,
-  `formatPrice`, `clamp`) → `shared/` (`shared/formatters`, `shared/parsers`, or a small
-  `shared/<primitive>.ts`). If a helper fits **none** of these, that's a signal it's
-  mislabeled — not that you need a `utils/`.
+- **The catch-all smell** — a top-level `utils/`, `lib/`, `misc/`, or `mappers/` folder
+  is **not a layer in this contract**: each hides *several* reasons to change, which is an
+  SRP smell. Route their contents to the layer that owns the reason — wire↔domain →
+  `transformers/`; domain→display → `formatters/`; input→value → `parsers/`; domain
+  computation/rules → a **model use-case**. If a helper knows your domain, API, UI, or
+  business rules, it belongs in a *named* layer — never a grab-bag.
+- **The copy-paste test** — a helper is a genuine reusable *primitive* **only if you could
+  copy it into any other project without changing a line**: zero domain imports, zero model
+  types, no API/UI knowledge (`assertNever`, `clamp`, `debounce`, `formatBytes`). If it
+  passes, it lives in **`shared/utils/`** (one function per file — `clamp.ts`, not a
+  `utils.ts` grab-bag), or in `shared/formatters`/`shared/parsers` when it's specifically a
+  pure formatter/parser primitive. If it **fails** the test, it is not a util — it's a
+  named layer mislabeled.
+- **`shared/utils/` vs a feature's `helpers/`** — the copy-paste test also decides *where*
+  a util-shaped helper lives. **Passes → `shared/utils/`** (portable to any project means
+  portable to any feature; a single consumer today is fine — cost is zero and the next
+  consumer finds it). **Small, pure, but feature-specific and not a named layer** (not a
+  formatter/parser/transformer/use-case, and pointless in `shared/` since it's only
+  meaningful here) → a feature-local **`helpers/`** folder (one canonical name — *not*
+  `internal/`, `utils/`, or `lib/`, whose reserved meanings elsewhere only reintroduce the
+  decision we're removing). `helpers/` is an explicit marker of *local implementation
+  detail*: it must not be imported by other features (it is not part of the feature's public
+  API). **Mandatory promotion rule:** the moment a helper acquires a reason to change of its
+  own — domain knowledge, business rules, API transformation, UI formatting, or any other
+  identifiable architectural responsibility — move it immediately to the named layer that
+  owns that reason. `helpers/` must never become a generic convenience layer (that is the
+  `utils/`-grab-bag smell under a new name).
 - **No `presenters/`** — the "presenter" role of classic MV\* is already split, with a
   clear owner each: domain→view-item is the **formatter** (`to*`), and *"what to show"*
   (the discriminated `status` + ready values) is the **ViewModel**. A `presenters/`
