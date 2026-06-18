@@ -141,7 +141,7 @@ substitution, pick one seam:
 
 - **`jest.mock('<facade/neutral-hook>')` — the default for a hook VM.** It keeps the
   production signature parameter-free (the canonical [`triad-example.md`](triad-example.md)
-  [section 6](#6-where-does-this-go-quick-placement)/section 9 shape) and is the lightest seam. Use it unless you need to swap the dependency
+  [section 6](triad-example.md#6-viewmodel--the-views-contract-as-a-discriminated-union)/[section 9](triad-example.md#9-tests--the-fake-vm-view-test--the-renderhook-vm-test) shape) and is the lightest seam. Use it unless you need to swap the dependency
   *outside* a test runner.
 - **An injectable hook param with real defaults** — when you also need runtime
   substitution (Storybook, a test harness app, multiple wirings). Shown below.
@@ -272,7 +272,7 @@ export const tabs = [productsTab, cartTab /* , … */]; // adding a feature appe
 
 **In MVVM:** adding a screen/feature extends a registry or a list of contributions
 rather than editing a shared file (worked end-to-end in
-[`triad-example.md`](triad-advanced.md#11-openclosed-in-practice--extend-a-registry-dont-edit-a-switch)).
+[`triad-advanced.md`](triad-advanced.md#11-openclosed-in-practice--extend-a-registry-dont-edit-a-switch)).
 
 #### L — Liskov Substitution Principle (LSP)
 

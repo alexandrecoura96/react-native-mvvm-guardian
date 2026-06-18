@@ -23,7 +23,7 @@ Model→…→View→Screen slice and the VM contract), see
 > `@tanstack/react-query`, `expo-router`, …) are real packages. App-internal imports
 > (`client`, `toAppError`, `transformProduct`, `Product`, `secureStore`, `navigationRef`,
 > `refreshSession`, the Redux `authSlice`/`store`, …) are the **same assumed helpers
-> catalogued in [`triad-example.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here)** or thin stand-ins you implement per your design — this is
+> catalogued in [`triad-crosscutting.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here)** or thin stand-ins you implement per your design — this is
 > illustrative TypeScript (adapt the imports to your libraries), not a runnable project.
 > What matters is the **boundary** each file sits behind, not the helper bodies.
 
@@ -409,7 +409,7 @@ grep -rEn "from ['\"][^'\"]*/(services|queries|mutations|stores|coordinators|nav
 grep -rEn 'useSelector\(\s*\(s\w*\)\s*=>\s*s\w*\s*\)' src   # expect: none — always a slice selector
 ```
 
-**b) The I/O service with `fetch`** — the same contract as [section 2](#2-feature-boundary-lint-recipe-eslint-flat-config-no-extra-plugins) (`Promise<Product[]>`
+**b) The I/O service with `fetch`** — the same contract as [section 2](triad-example.md#2-service--the-only-layer-that-touches-io-classifies-errors) (`Promise<Product[]>`
 plus a classified `AppError`); only the client changes. Two differences from axios:
 `fetch` does **not** reject on a non-2xx status (so the service checks `res.ok`
 itself), and `toAppError` here is the **fetch-aware** classifier — error classification

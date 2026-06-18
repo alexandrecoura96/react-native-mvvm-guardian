@@ -24,7 +24,7 @@ recipe says so; the **boundary**, not the lib, is the durable part.
 > **About the imports.** As everywhere in this skill, these snippets are illustrative.
 > App-internal imports — `transformProduct`, `toAppError`, `AppError`, `parseRouteId`,
 > `ProductsData` — are the assumed helpers from
-> [`triad-example.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here); the chat-feature names (`Message`, `transformMessage`,
+> [`triad-crosscutting.md` section 23](triad-crosscutting.md#23-referenced-helpers--primitives-assumed-not-re-implemented-here); the chat-feature names (`Message`, `transformMessage`,
 > `fetchMessages`) and storage stand-ins (`storage`/`kvStore`) are feature-local examples you
 > implement the same way. Third-party imports are real packages.
 
