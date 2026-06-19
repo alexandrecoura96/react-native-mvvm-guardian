@@ -32,7 +32,7 @@ for the contract and `triad-example.md` to see it in code; reach for `triad-adva
   **code**, the **core slice** (sections 0–9): starts with a ~40-line **quickstart**
   (section 0) — the smallest faithful slice — then the full
   Model→Service→transformer→formatter→neutral-hook→ViewModel→View→Screen slice, the VM
-  contract as a discriminated union, controlled inputs, and the tests.
+  contract as a discriminated union, and the tests.
 - [`references/triad-advanced.md`](references/triad-advanced.md) — the **harder cases**
   (sections 10–18): controlled inputs/forms, the Open–Closed Principle (OCP) via a
   registry, the no-server-state-lib path, the god-component refactor, typed route params,

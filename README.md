@@ -74,7 +74,7 @@ To try it before publishing, add a local path instead:
     ladder, migration playbooks, and governance.
   - `triad-example.md` — the triad in code, **core slice** (sections 0–9): a full
     Model→…→View→Screen slice, the ViewModel contract as a discriminated union,
-    controlled inputs, and tests.
+    and tests.
   - `triad-advanced.md` — the **harder cases** (sections 10–18): forms, Open/Closed via
     a registry, the no-server-state path, the god-component refactor, typed route params,
     mutations (optimistic + rollback), an error boundary, and the same triad on
